@@ -1,0 +1,84 @@
+[
+  {
+    "id": "localhost-demo",
+    "name": "Boutique Démo Locale",
+    "enabled": true,
+    "matches": [
+      "localhost:3000",
+      "127.0.0.1:3000"
+    ],
+    "shopKey": "pk_demo_boutique",
+    "productPage": {
+      "pathPattern": "(boutique-extension|boutique-demo)"
+    },
+    "button": {
+      "anchor": "form[action*='/cart/add'], form.cart, #product-form",
+      "position": "afterend",
+      "text": "Trouver ma taille"
+    },
+    "productId": {
+      "strategy": "auto"
+    }
+  },
+  {
+    "id": "uniqlo",
+    "name": "Uniqlo FR",
+    "enabled": true,
+    "matches": [
+      "www.uniqlo.com",
+      "uniqlo.com"
+    ],
+    "shopKey": "pk_demo_boutique",
+    "productPage": {
+      "pathPattern": "/products/"
+    },
+    "button": {
+      "anchor": null,
+      "position": "afterend",
+      "text": "Trouver ma taille avec SwiftStyle"
+    },
+    "productId": {
+      "strategy": "auto"
+    }
+  },
+  {
+    "id": "leslipfrancais",
+    "name": "Le Slip Français",
+    "enabled": true,
+    "matches": [
+      "www.leslipfrancais.fr"
+    ],
+    "shopKey": "pk_demo_boutique",
+    "productPage": {
+      "pathPattern": "/products/"
+    },
+    "button": {
+      "anchor": null,
+      "position": "afterend",
+      "text": "Trouver ma taille avec SwiftStyle"
+    },
+    "productId": {
+      "strategy": "auto"
+    }
+  },
+  {
+    "id": "nike",
+    "name": "Nike",
+    "enabled": true,
+    "matches": [
+      "www.nike.com"
+    ],
+    "shopKey": "pk_demo_boutique",
+    "productPage": {
+      "pathPattern": "/t/"
+    },
+    "button": {
+      "anchor": null,
+      "position": "afterend",
+      "text": "Trouver ma taille avec SwiftStyle"
+    },
+    "productId": {
+      "strategy": "auto"
+    }
+  }
+]

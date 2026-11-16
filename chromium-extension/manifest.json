@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "SwiftStyle",
+  "version": "1.0",
+  "description": "Fini les retours de vêtements ! SwiftStyle vous aide à choisir la bonne taille pour vos achats en ligne.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content/index.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["sites.json"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://localhost:3000/*",
+    "https://swiftstyle.fr/*"
+  ]
+}
