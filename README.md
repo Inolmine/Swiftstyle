@@ -116,14 +116,24 @@ Ouvrir demo.html dans un navigateur
 → cliquer "Capturer"
 ```
 
-## Structure
+## Structure du projet
 
 ```text
-swiftstyle-widget/
-├── widget.js          # single-file embeddable
-├── demo.html          # page produit de démo
-├── size-chart.json    # sample
-└── README.md
+swiftstyle/
+├── src/
+│   └── widget.js          # Code source du widget
+├── dist/
+│   └── widget.js          # Version distribuable autonome
+├── examples/
+│   ├── demo.html          # Démo produit e-commerce
+│   └── size-chart.json    # Exemple de grille de tailles
+├── data/
+│   └── size-chart.json    # Grille de tailles de référence
+├── demo.html              # Point d'accès direct démo
+├── widget.js              # Point d'accès direct widget
+├── package.json           # Métadonnées et scripts npm
+├── .gitignore             # Règles d'exclusion git
+└── README.md              # Documentation
 ```
 
 ---

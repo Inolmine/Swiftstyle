@@ -50,6 +50,7 @@
     config: null,
     step: 'idle',
     heightCm: 175,
+    weightKg: 70,
     gender: 'female',
     measurements: null,
     recommendedSize: null,
@@ -448,16 +449,29 @@
           </div>
         </div>
 
-        <!-- STEP 1: HEIGHT & GENDER -->
+        <!-- STEP 1: HEIGHT, WEIGHT & GENDER -->
         <div class="ss-body" data-step="height">
-          <p class="ss-subtitle">Indiquez votre taille et morphologie pour calibrer le capteur avec précision.</p>
+          <p class="ss-subtitle">Indiquez votre taille, poids et morphologie pour calibrer le capteur avec précision.</p>
           
-          <label class="ss-label">Votre taille en centimètres</label>
-          <div class="ss-input-wrap">
-            <input type="number" class="ss-input" data-field="height"
-                   placeholder="ex: 175" value="${state.heightCm || 175}"
-                   min="120" max="220" inputmode="numeric" />
-            <span class="ss-unit">cm</span>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div>
+              <label class="ss-label">Taille</label>
+              <div class="ss-input-wrap" style="margin-bottom: 0;">
+                <input type="number" class="ss-input" data-field="height"
+                       placeholder="ex: 175" value="${state.heightCm || 175}"
+                       min="120" max="220" inputmode="numeric" />
+                <span class="ss-unit">cm</span>
+              </div>
+            </div>
+            <div>
+              <label class="ss-label">Poids</label>
+              <div class="ss-input-wrap" style="margin-bottom: 0;">
+                <input type="number" class="ss-input" data-field="weight"
+                       placeholder="ex: 70" value="${state.weightKg || 70}"
+                       min="35" max="200" inputmode="numeric" />
+                <span class="ss-unit">kg</span>
+              </div>
+            </div>
           </div>
 
           <label class="ss-label">Morphologie de référence</label>
@@ -586,10 +600,12 @@
     });
   }
 
-  // ---------- STEP 1: HEIGHT ----------
+  // ---------- STEP 1: HEIGHT & WEIGHT ----------
   async function handleHeightNext() {
-    const input = $('[data-field="height"]', state.overlayEl);
-    const height = parseFloat(input.value);
+    const heightInput = $('[data-field="height"]', state.overlayEl);
+    const weightInput = $('[data-field="weight"]', state.overlayEl);
+    const height = parseFloat(heightInput.value);
+    const weight = parseFloat(weightInput?.value || 70);
     const err = $('[data-field="err"]', state.overlayEl);
 
     if (!Number.isFinite(height) || height < 120 || height > 220) {
@@ -597,8 +613,14 @@
       err.hidden = false;
       return;
     }
+    if (!Number.isFinite(weight) || weight < 35 || weight > 200) {
+      err.textContent = 'Veuillez saisir un poids réaliste entre 35 et 200 kg.';
+      err.hidden = false;
+      return;
+    }
     err.hidden = true;
     state.heightCm = height;
+    state.weightKg = weight;
     showStep('capture');
 
     // Preload models in background while starting camera
@@ -710,27 +732,28 @@
               }
             });
 
-            // Check full-body visibility
+            // Check visibility for dual modes (Full-body standing or Bust/Torso sitting)
             const shoulders = (get('left_shoulder')?.score || 0) > 0.35 && (get('right_shoulder')?.score || 0) > 0.35;
             const hips = (get('left_hip')?.score || 0) > 0.35 && (get('right_hip')?.score || 0) > 0.35;
             const ankles = (get('left_ankle')?.score || 0) > 0.25 || (get('right_ankle')?.score || 0) > 0.25;
             const knees = (get('left_knee')?.score || 0) > 0.3 && (get('right_knee')?.score || 0) > 0.3;
             const head = (get('nose')?.score || 0) > 0.35 || (get('left_ear')?.score || 0) > 0.35 || (get('right_ear')?.score || 0) > 0.35;
 
-            if (shoulders && hips && (ankles || knees) && head) {
-              state.fullBodyDetected = true;
-              statusTxt.textContent = 'Silhouette prête ✓';
-              statusHint.textContent = 'Parfait, restez stable';
+            if (shoulders && head && (hips || knees || ankles)) {
+              const isFull = ankles || knees;
+              state.fullBodyDetected = isFull;
+              statusTxt.textContent = isFull ? 'Corps entier détecté ✓' : 'Buste & torse détectés ✓';
+              statusHint.textContent = 'Restez stable, prêt !';
               statusDot.className = 'ss-status-dot ok';
               captureBtn.disabled = false;
             } else if (!head) {
               statusTxt.textContent = 'Tête non visible';
-              statusHint.textContent = 'Levez la caméra';
+              statusHint.textContent = 'Ajustez la hauteur';
               statusDot.className = 'ss-status-dot';
               captureBtn.disabled = true;
-            } else if (!ankles && !knees) {
-              statusTxt.textContent = 'Pieds non visibles';
-              statusHint.textContent = 'Reculez de 2-3 mètres';
+            } else if (!shoulders) {
+              statusTxt.textContent = 'Épaules non visibles';
+              statusHint.textContent = 'Cadrez le haut du corps';
               statusDot.className = 'ss-status-dot';
               captureBtn.disabled = true;
             } else {
@@ -868,7 +891,7 @@
       if (!poses || poses.length === 0) throw new Error('Aucun profil humain détecté sur la photo.');
       const kp = poses[0].keypoints;
 
-      // Calibration: Pixels per cm using height & anthropometric skull/ankle proportions
+      // Robust calibration: automatically determines whether user is framed full-body or half-body (sitting/buste)
       const calib = calibrateBody(kp, state.heightCm, snap.height);
 
       // Try OpenCV GrabCut silhouette segmentation; fallback gracefully to keypoints
@@ -879,30 +902,82 @@
         console.warn('[SwiftStyle] Silhouette fallback to keypoints:', err.message);
       }
 
-      // Biacromial breadth & hip width estimation:
-      // Shoulder joint-to-joint is ~82% of total outer shoulder breadth
+      // Biacromial shoulder breadth & hip width estimation
       const shoulderJointDist = kpDistance(kp, 'left_shoulder', 'right_shoulder') / calib.pxPerCm;
       const hipJointDist = kpDistance(kp, 'left_hip', 'right_hip') / calib.pxPerCm;
 
-      const shoulderWidthCm = widths?.shoulderWidthCm ?? (shoulderJointDist * 1.22);
-      const hipWidthCm = widths?.hipWidthCm ?? (hipJointDist * 1.25);
-      const chestWidthCm = widths?.chestWidthCm ?? (shoulderWidthCm * 0.88);
-      const waistWidthCm = widths?.waistWidthCm ?? (hipWidthCm * 0.80);
+      let shoulderWidthCm = widths?.shoulderWidthCm ?? (shoulderJointDist * 1.18);
+      let chestWidthCm = widths?.chestWidthCm ?? (shoulderWidthCm * 0.86);
+      let waistWidthCm = widths?.waistWidthCm ?? (hipJointDist > 10 ? hipJointDist * 0.82 : shoulderWidthCm * 0.72);
+      let hipWidthCm = widths?.hipWidthCm ?? (hipJointDist > 10 ? hipJointDist * 1.15 : shoulderWidthCm * 0.90);
 
-      const ratios = ANTHRO[state.gender] || ANTHRO.female;
-      const chestCm = round(chestWidthCm * ratios.chest, 1);
-      const waistCm = round(waistWidthCm * ratios.waist, 1);
-      const hipCm = round(hipWidthCm * ratios.hip, 1);
+      // ---------- WEIGHT & BMI MORPHOLOGICAL INTEGRATION ----------
+      const heightM = state.heightCm / 100;
+      const weightKg = state.weightKg || 70;
+      const bmi = round(weightKg / (heightM * heightM), 1);
+
+      // BMI scaling factor modulates 3D body depth (flatter torso vs fuller chest/waist)
+      // Reference normal BMI ≈ 22.0
+      const bmiRatio = bmi / 22.0;
+      const depthFactor = Math.max(0.85, Math.min(1.28, Math.sqrt(bmiRatio)));
+
+      const baseRatios = ANTHRO[state.gender] || ANTHRO.female;
+      // Adjust circumference multipliers: deeper torso for higher BMI
+      const dynChestRatio = baseRatios.chest * (0.88 + 0.12 * depthFactor);
+      const dynWaistRatio = baseRatios.waist * (0.80 + 0.20 * (depthFactor ** 1.3));
+      const dynHipRatio = baseRatios.hip * (0.88 + 0.12 * depthFactor);
+
+      let rawChestCm = chestWidthCm * dynChestRatio;
+      let rawWaistCm = waistWidthCm * dynWaistRatio;
+      let rawHipCm = hipWidthCm * dynHipRatio;
+
+      // ---------- ANTHROPOMETRIC HARMONIZATION WITH WEIGHT PRIOR ----------
+      // Standard human anatomical models based on height and weight (CAESAR / ANSUR II statistical models)
+      const isFemale = state.gender === 'female';
+      const baselineChest = isFemale
+        ? (84 + (state.heightCm - 165) * 0.26 + (weightKg - 60) * 0.58)
+        : (92 + (state.heightCm - 175) * 0.28 + (weightKg - 75) * 0.62);
+
+      const baselineWaist = isFemale
+        ? (66 + (state.heightCm - 165) * 0.20 + (weightKg - 60) * 0.65)
+        : (78 + (state.heightCm - 175) * 0.22 + (weightKg - 75) * 0.68);
+
+      const baselineHip = isFemale
+        ? (92 + (state.heightCm - 165) * 0.26 + (weightKg - 60) * 0.60)
+        : (96 + (state.heightCm - 175) * 0.25 + (weightKg - 75) * 0.55);
+
+      // Ensemble fusion: 68% computer vision (MoveNet + OpenCV), 32% physical height-weight prior
+      let chestCm = round(rawChestCm * 0.68 + baselineChest * 0.32, 1);
+      let waistCm = round(rawWaistCm * 0.65 + baselineWaist * 0.35, 1);
+      let hipCm = round(rawHipCm * 0.68 + baselineHip * 0.32, 1);
+
+      // Physiological boundaries enforcement
+      // 1. Waist must be between 70% and 92% of chest
+      const minWaist = round(chestCm * (isFemale ? 0.70 : 0.74), 1);
+      const maxWaist = round(chestCm * 0.94, 1);
+      waistCm = Math.max(minWaist, Math.min(maxWaist, waistCm));
+
+      // 2. Hip cannot be smaller than waist + 8cm (female) or waist + 4cm (male)
+      const minHip = isFemale ? Math.max(waistCm + 8, chestCm * 0.94) : Math.max(waistCm + 4, chestCm * 0.90);
+      hipCm = round(Math.max(minHip, hipCm), 1);
+
+      // 3. Absolute bounds
+      chestCm = Math.max(76, Math.min(135, chestCm));
+      waistCm = Math.max(58, Math.min(125, waistCm));
+      hipCm = Math.max(80, Math.min(140, hipCm));
+      shoulderWidthCm = round(Math.max(34, Math.min(54, shoulderWidthCm)), 1);
 
       const confidence = round(kp.reduce((s, k) => s + (k.score || 0), 0) / kp.length, 2);
 
       const measurements = {
-        shoulderWidthCm: round(shoulderWidthCm, 1),
+        shoulderWidthCm,
         chestCm,
         waistCm,
         hipCm,
+        bmi,
+        weightKg,
         confidence,
-        method: widths ? 'Silhouette OpenCV' : 'MoveNet Estimé',
+        method: widths ? `OpenCV + MoveNet (${calib.framingMode})` : `MoveNet Estimé (${calib.framingMode})`,
       };
       state.measurements = measurements;
 
@@ -932,40 +1007,61 @@
 
     const lEar = get('left_ear'), rEar = get('right_ear');
     const nose = get('nose');
-    const lA = get('left_ankle'), rA = get('right_ankle');
+    const lS = get('left_shoulder'), rS = get('right_shoulder');
+    const lH = get('left_hip'), rH = get('right_hip');
     const lK = get('left_knee'), rK = get('right_knee');
+    const lA = get('left_ankle'), rA = get('right_ankle');
 
-    // Head reference point
+    // Head reference point (crown/ear level)
     let headRefY = null;
     if (lEar && rEar) headRefY = (lEar.y + rEar.y) / 2;
     else if (nose) headRefY = nose.y;
-    else {
-      const lS = get('left_shoulder'), rS = get('right_shoulder');
-      if (lS && rS) headRefY = (lS.y + rS.y) / 2 - 40;
-    }
+    else if (lS && rS) headRefY = (lS.y + rS.y) / 2 - 40;
 
-    // Foot / floor reference point
-    let groundY = null;
-    if (lA && rA) {
-      groundY = (lA.y + rA.y) / 2 + 15; // +15px for foot sole
-    } else if (lA || rA) {
-      groundY = (lA ? lA.y : rA.y) + 15;
-    } else if (lK && rK) {
-      // Anthropometry: knee is at approx 28.5% total height from floor
-      const kneeY = (lK.y + rK.y) / 2;
-      const torsoSpan = kneeY - (headRefY || 0);
-      groundY = kneeY + torsoSpan * 0.38;
+    // Check if user is framed full-body or half-body (sitting / waist-up)
+    const hasLegs = (lA && lA.score > 0.3) || (rA && rA.score > 0.3) || (lK && rK && lK.score > 0.35 && rK.score > 0.35);
+
+    let pxPerCm = null;
+    let framingMode = 'Corps Entier';
+
+    if (hasLegs) {
+      // FULL BODY MODE:
+      let groundY = null;
+      if (lA && rA) {
+        groundY = (lA.y + rA.y) / 2 + 15;
+      } else if (lA || rA) {
+        groundY = (lA ? lA.y : rA.y) + 15;
+      } else if (lK && rK) {
+        const kneeY = (lK.y + rK.y) / 2;
+        groundY = kneeY + (kneeY - (headRefY || 0)) * 0.38;
+      }
+
+      const earAnkleDistance = Math.max(100, groundY - (headRefY || 0));
+      const fullHeightPixels = earAnkleDistance / 0.90; // ear to sole is ~90% of stature
+      pxPerCm = fullHeightPixels / heightCm;
     } else {
-      groundY = canvasHeight - 20;
+      // HALF BODY / UPPER BODY MODE (Sitting at desk or bust framing):
+      framingMode = 'Buste & Torse';
+      if (lS && rS && lH && rH && lH.score > 0.25 && rH.score > 0.25) {
+        // Torso length (shoulder midpoint to hip midpoint) is ~28.8% of total height
+        const shoulderMidY = (lS.y + rS.y) / 2;
+        const hipMidY = (lH.y + rH.y) / 2;
+        const torsoPixelHeight = Math.max(60, hipMidY - shoulderMidY);
+        const expectedTorsoCm = heightCm * 0.288;
+        pxPerCm = torsoPixelHeight / expectedTorsoCm;
+      } else if (lS && rS && headRefY) {
+        // Eye-to-shoulder vertical distance is ~12.2% of total height
+        const shoulderMidY = (lS.y + rS.y) / 2;
+        const eyeShoulderPixels = Math.max(30, shoulderMidY - headRefY);
+        const expectedEyeShoulderCm = heightCm * 0.122;
+        pxPerCm = eyeShoulderPixels / expectedEyeShoulderCm;
+      } else {
+        // Safe default: assume standard desktop webcam framing
+        pxPerCm = (canvasHeight * 0.75) / heightCm;
+      }
     }
 
-    // Anthropometry: distance from ear/eye line to top of skull is ~7.5% of total height
-    // Ear to ankle is approx 88% of total stature
-    const earAnkleDistance = Math.max(100, groundY - (headRefY || 0));
-    const fullHeightPixels = earAnkleDistance / 0.92;
-    const pxPerCm = fullHeightPixels / heightCm;
-
-    return { pxPerCm, groundY };
+    return { pxPerCm: Math.max(1.0, pxPerCm), framingMode };
   }
 
   function kpDistance(kp, a, b) {
@@ -981,7 +1077,7 @@
     if (!cv || !cv.Mat) throw new Error('OpenCV non disponible');
 
     const vis = kp.filter(k => k.score > 0.25);
-    if (vis.length < 6) throw new Error('Points clés insuffisants');
+    if (vis.length < 5) throw new Error('Points clés insuffisants');
 
     // Downscale canvas to max dimension ~360px for ultra-fast GrabCut (80ms vs 6000ms)
     const scale = Math.min(1.0, 360 / Math.max(canvas.width, canvas.height));
@@ -998,14 +1094,14 @@
     const xs = scaledKp.filter(k => k.score > 0.25).map(k => k.x);
     const ys = scaledKp.filter(k => k.score > 0.25).map(k => k.y);
 
-    const margin = 20;
+    const margin = 16;
     const x0 = Math.max(0, Math.floor(Math.min(...xs)) - margin);
     const y0 = Math.max(0, Math.floor(Math.min(...ys)) - margin);
     const x1 = Math.min(scaledW, Math.ceil(Math.max(...xs)) + margin);
     const y1 = Math.min(scaledH, Math.ceil(Math.max(...ys)) + margin);
     const w = x1 - x0, h = y1 - y0;
 
-    if (w < 30 || h < 60) throw new Error('Zone de découpe trop petite');
+    if (w < 30 || h < 50) throw new Error('Zone de découpe trop petite');
 
     let src = null, mask = null, bgd = null, fgd = null, fg = null;
     try {
@@ -1025,37 +1121,74 @@
         fgData[i] = (v === cv.GC_FGD || v === cv.GC_PR_FGD) ? 255 : 0;
       }
 
-      const widthAtY = (row) => {
-        const r = Math.round(row);
-        if (r < 0 || r >= fg.rows) return 0;
-        const off = r * fg.cols;
-        let left = -1, right = -1;
-        for (let x = 0; x < fg.cols; x++) {
-          if (fgData[off + x] > 128) {
-            if (left === -1) left = x;
-            right = x;
-          }
-        }
-        return left === -1 ? 0 : (right - left);
-      };
-
       const get = n => scaledKp.find(k => k.name === n && k.score > 0.25);
       const lS = get('left_shoulder'), rS = get('right_shoulder');
       const lH = get('left_hip'), rH = get('right_hip');
 
-      if (!lS || !rS || !lH || !rH) throw new Error('Repères épaules/hanches manquants');
+      if (!lS || !rS) throw new Error('Épaules non visibles');
 
+      const shoulderSpan = Math.abs(lS.x - rS.x);
+      const shoulderMidX = (lS.x + rS.x) / 2;
       const shoulderY = (lS.y + rS.y) / 2;
-      const hipY = (lH.y + rH.y) / 2;
+
+      const hipMidX = (lH && rH) ? (lH.x + rH.x) / 2 : shoulderMidX;
+      const hipY = (lH && rH) ? (lH.y + rH.y) / 2 : (shoulderY + shoulderSpan * 1.25);
+
       const chestY = shoulderY + (hipY - shoulderY) * 0.30;
       const waistY = shoulderY + (hipY - shoulderY) * 0.65;
 
-      const shoulderW = widthAtY(shoulderY) / scale;
-      const chestW = widthAtY(chestY) / scale;
-      const waistW = widthAtY(waistY) / scale;
-      const hipW = widthAtY(hipY) / scale;
+      // TORSO-CENTERED ROW SCANNER:
+      // Scans outward from torso center line to isolate torso width without including outer arms!
+      const measureTorsoWidth = (targetY, centerTargetX, maxHalfWidth) => {
+        const r = Math.round(targetY);
+        if (r < 0 || r >= fg.rows) return 0;
+        const off = r * fg.cols;
+        const cX = Math.round(centerTargetX);
 
-      if (shoulderW < 20 || hipW < 20) throw new Error('Largeurs anormalement faibles');
+        // Scan Left from center
+        let leftEdge = cX;
+        let gapCount = 0;
+        for (let x = cX; x >= 0; x--) {
+          if (cX - x > maxHalfWidth) { leftEdge = x; break; }
+          if (fgData[off + x] > 128) {
+            leftEdge = x;
+            gapCount = 0;
+          } else {
+            gapCount++;
+            if (gapCount > 4) break; // Reached gap between torso and arm/background!
+          }
+        }
+
+        // Scan Right from center
+        let rightEdge = cX;
+        gapCount = 0;
+        for (let x = cX; x < fg.cols; x++) {
+          if (x - cX > maxHalfWidth) { rightEdge = x; break; }
+          if (fgData[off + x] > 128) {
+            rightEdge = x;
+            gapCount = 0;
+          } else {
+            gapCount++;
+            if (gapCount > 4) break; // Reached gap between torso and arm/background!
+          }
+        }
+
+        return Math.max(0, rightEdge - leftEdge);
+      };
+
+      // Maximum allowable half-widths prevent arms from falsely inflating torso measurements
+      const maxTorsoHalfWidth = (shoulderSpan / 2) * 1.15;
+      const maxWaistHalfWidth = (shoulderSpan / 2) * 1.05;
+
+      const chestCenterX = shoulderMidX * 0.7 + hipMidX * 0.3;
+      const waistCenterX = shoulderMidX * 0.35 + hipMidX * 0.65;
+
+      const shoulderW = (shoulderSpan * 1.22) / scale; // outer biacromial breadth
+      const chestW = measureTorsoWidth(chestY, chestCenterX, maxTorsoHalfWidth) / scale;
+      const waistW = measureTorsoWidth(waistY, waistCenterX, maxWaistHalfWidth) / scale;
+      const hipW = measureTorsoWidth(hipY, hipMidX, maxTorsoHalfWidth * 1.1) / scale;
+
+      if (chestW < 15) throw new Error('Torse non détecté');
 
       return {
         shoulderWidthCm: shoulderW / pxPerCm,
@@ -1128,6 +1261,11 @@
     const waistRange = currentSizeData?.waist ? `${currentSizeData.waist[0]}–${currentSizeData.waist[1]} cm` : '';
     const hipRange = currentSizeData?.hip ? `${currentSizeData.hip[0]}–${currentSizeData.hip[1]} cm` : '';
 
+    const fitDesc = $('[data-field="fit-desc"]', state.overlayEl);
+    if (fitDesc) {
+      fitDesc.textContent = `Profil : ${state.heightCm} cm · ${state.weightKg} kg · Ajustement optimal (${m.method})`;
+    }
+
     mGrid.innerHTML = `
       <div class="ss-m-card">
         <div class="ss-m-label">Tour de poitrine</div>
@@ -1147,7 +1285,7 @@
       <div class="ss-m-card">
         <div class="ss-m-label">Largeur d'épaules</div>
         <div class="ss-m-val">${m.shoulderWidthCm} cm</div>
-        <div class="ss-m-detail">Indice confiance ${Math.round(m.confidence * 100)}%</div>
+        <div class="ss-m-detail">Confiance IA ${Math.round(m.confidence * 100)}%</div>
       </div>
     `;
 

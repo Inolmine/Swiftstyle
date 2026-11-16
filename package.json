@@ -1,0 +1,30 @@
+{
+  "name": "swiftstyle-widget",
+  "version": "0.2.0",
+  "description": "Embeddable AI size-recommendation widget for e-commerce (TensorFlow.js MoveNet + OpenCV.js GrabCut)",
+  "main": "dist/widget.js",
+  "scripts": {
+    "serve": "python -m http.server 8000",
+    "test": "echo \"No test specified\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Inolmine/Swiftstyle.git"
+  },
+  "keywords": [
+    "size-recommendation",
+    "ai",
+    "movenet",
+    "opencv",
+    "e-commerce",
+    "shopify",
+    "computer-vision",
+    "fashion-tech"
+  ],
+  "author": "Inolmine",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Inolmine/Swiftstyle/issues"
+  },
+  "homepage": "https://github.com/Inolmine/Swiftstyle#readme"
+}

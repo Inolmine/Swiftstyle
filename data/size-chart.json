@@ -1,0 +1,14 @@
+{
+  "unit": "cm",
+  "brand": "Exemple de marque",
+  "product": "T-shirt Coton Bio",
+  "fit": "regular",
+  "sizes": [
+    { "label": "XS",  "chest": [80, 86],   "waist": [62, 68],   "hip": [84, 90] },
+    { "label": "S",   "chest": [86, 92],   "waist": [68, 74],   "hip": [90, 96] },
+    { "label": "M",   "chest": [92, 98],   "waist": [74, 80],   "hip": [96, 102] },
+    { "label": "L",   "chest": [98, 104],  "waist": [80, 86],   "hip": [102, 108] },
+    { "label": "XL",  "chest": [104, 110], "waist": [86, 94],   "hip": [108, 116] },
+    { "label": "XXL", "chest": [110, 120], "waist": [94, 104],  "hip": [116, 128] }
+  ]
+}
