@@ -1,93 +1,130 @@
-# swiftstyle.fr
+# SwiftStyle · extension navigateur
 
+Ajoute un bouton « Trouver ma taille » sur les fiches produit des sites listés dans `sites.json`.
+Au clic, une fenêtre s'ouvre par-dessus la page :
 
+1. le client donne sa taille (elle sert d'échelle aux photos) et accepte l'envoi de ses photos ;
+2. la caméra s'allume. **Les photos se prennent toutes seules** : plusieurs fois par seconde, une
+   image réduite part à l'API photo, qui dit si la personne est prête (entière dans l'image, assez
+   grande, centrée, de face). Sinon, la fenêtre affiche sur la vidéo quoi faire (« Reculez : vos
+   pieds doivent être visibles. »). Dans un coin de l'image, un mannequin au style de MediaPipe
+   (ses 33 points reliés, orange à gauche, cyan à droite) montre la pose à prendre : de face bras
+   un peu écartés et pieds écartés, puis de profil. La personne se place où elle veut dans le
+   cadre ; son propre squelette, dans le même style, est dessiné sur elle. Dès que MediaPipe la voit prête
+   sur deux images de suite sans qu'elle ait bougé, un **compte à rebours de 3 s** s'affiche. S'il
+   va au bout sans qu'elle bouge ni sorte du cadre, la photo de face est prise : la dernière image
+   que MediaPipe a validée. Puis « Tournez-vous de profil », et la même chose de profil. La
+   fenêtre ne fait **aucun son** ;
+3. les deux photos partent à l'API photo, qui mesure poitrine, taille, hanches, cuisse et
+   entrejambe ;
+4. ces mensurations et **l'identifiant du vêtement** (id Shopify, SKU… lu sur la page, avec le
+   site) partent au site SwiftStyle. Il retrouve le vêtement et son guide des tailles dans son
+   catalogue, et rend la taille idéale ;
+5. sur le résultat, le client **choisit sa coupe** (ajusté, normal, ample) et peut **corriger ses
+   mesures sans mètre ruban** : ses deux photos s'affichent avec une ligne de couleur par mesure, là
+   où l'API l'a lue. Si une ligne dépasse du corps (vêtement ample, bras), il fait glisser ses
+   extrémités jusqu'aux bords du corps, à la souris, au doigt ou aux flèches du clavier. Chaque
+   ligne ne bouge que **sur un seul axe** : en largeur pour les tours (poitrine, taille, hanches,
+   cuisse), en hauteur pour l'entrejambe. La ligne d'origine reste en pointillés. Les mesures sont
+   recalculées dans la fenêtre (même méthode que la page `/test-photo` du site :
+   `src/lib/photo-measure/adjust.ts`), et la taille par le site, **sans reprendre de photos**. Les
+   mesures dont le guide du vêtement ne se sert pas sont grisées ; un lien ramène aux lignes
+   d'origine ;
+6. « Sélectionner la taille M » coche la taille sur la page de la marque.
 
-## Getting started
+Sans caméra (refusée, absente, ou bloquée par le site), le client peut importer deux photos.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Les fichiers
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Les dossiers `chromium-extension/` (Chrome, Edge, Brave, Opera) et `firefox-extension/` ont les
+mêmes fichiers ; seul `manifest.json` diffère (`service_worker` d'un côté, `scripts` de l'autre).
+**Modifier les deux**, ou copier l'un dans l'autre en gardant chaque manifeste.
 
-## Add your files
+| Fichier | Rôle |
+|---|---|
+| `manifest.json` | Manifest V3 : scripts, autorisations (`storage`, adresses de nos API) |
+| `sites.json` | sites compatibles : adresses, motif des pages produit, emplacement et texte du bouton |
+| `content/index.js` | sur la page : reconnaît une fiche produit, place le bouton, lit le nom, la catégorie et les tailles du produit, sélectionne la taille recommandée |
+| `content/modal.js` | la fenêtre : caméra, prise de vue automatique, mesure, résultat. Dans un Shadow DOM fermé : la page n'atteint ni la vidéo ni les photos |
+| `background.js` | service worker : fait les requêtes vers nos API (adresses dans `CONFIG`, en haut du fichier) |
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+Les requêtes passent par `background.js` et non par la page : elles n'ont pas besoin que nos API
+autorisent chaque site de marque (CORS), et la page de la marque ne voit passer ni les photos ni
+les mensurations.
 
-```
-cd existing_repo
-git remote add origin https://gitlab.com/estiam825327/swiftstyle.fr.git
-git branch -M main
-git push -uf origin main
-```
+## Les appels
 
-## Integrate with your tools
+| Étape | Appel | Service |
+|---|---|---|
+| cadrage, ~3 fois par seconde | `POST /v1/photo/pose` (image 640 px, `expect=front` ou `side`) | API photo (`backend/`), port 8000 |
+| mesure | `POST /v1/photo/measure` (`heightCm`, `front`, `side`) | API photo |
+| taille idéale, puis à chaque correction ou changement de coupe | `POST /api/v1/recommend` (JSON : `measurements`, `fit`, `garment` avec son `id`) | site SwiftStyle publié sur Cloudflare |
 
-* [Set up project integrations](https://gitlab.com/estiam825327/swiftstyle.fr/-/settings/integrations)
+Les adresses sont dans `CONFIG`, en haut de `background.js` :
 
-## Collaborate with your team
+| Clé | Valeur actuelle | Service |
+|---|---|---|
+| `appUrl` | `https://swiftstyle.jesololido2004.workers.dev` | le site publié sur Cloudflare (taille idéale) |
+| `photoApiUrl` | `http://localhost:8000` | l'API photo, pas encore hébergée : la caméra et la mesure ne marchent que sur un poste où elle tourne |
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+Chaque adresse doit aussi figurer dans les `host_permissions` des deux manifestes (déjà fait pour
+celles-ci). Pour essayer une modification du site avant de la publier, remettre `appUrl` à
+`http://localhost:3000` le temps de l'essai.
 
-## Test and Deploy
+Documentations : http://localhost:8000/docs (API photo) et
+https://swiftstyle.jesololido2004.workers.dev/docs (site, une fois la version actuelle publiée).
 
-Use the built-in continuous integration in GitLab.
+## Essayer en local
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+1. Lancer l'API photo, depuis la racine du dépôt du site (`swiftstyle.fr`, voir son `README.md`).
+   Sous Windows PowerShell (`&&` n'y existe pas) :
 
-***
+   ```powershell
+   cd backend
+   .venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+   ```
 
-# Editing this README
+   Le site, lui, est appelé à son adresse publique (`appUrl`). Pour essayer une version locale du
+   site, lancer `npm run dev` et remettre `appUrl` à `http://localhost:3000`.
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+   Sous macOS / Linux : `cd backend && .venv/bin/python -m uvicorn app.main:app --port 8000`.
 
-## Suggestions for a good README
+2. Charger l'extension :
+   - **Chrome / Edge** : `chrome://extensions`, activer le « Mode développeur », « Charger
+     l'extension non empaquetée », choisir `chromium-extension/` ;
+   - **Firefox** : `about:debugging#/runtime/this-firefox`, « Charger un module complémentaire
+     temporaire », choisir `firefox-extension/manifest.json`. Dans `about:addons`, vérifier que
+     l'extension a l'autorisation d'accéder à `localhost`.
+3. Ouvrir une fiche produit d'un site de `sites.json` (Uniqlo, Le Slip Français, Nike…) : le
+   bouton apparaît sous les tailles. Le navigateur demande l'accès à la caméra **pour ce site** :
+   choisir « Autoriser cette fois » plutôt qu'une autorisation permanente.
+4. Se placer à 2 ou 3 m, l'ordinateur à hauteur des hanches, bras un peu écartés.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Après une modification d'un fichier, recharger l'extension (bouton ↻ dans `chrome://extensions`)
+puis la page.
 
-## Name
-Choose a self-explaining name for your project.
+## Mise en production
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+- `appUrl` pointe déjà vers le site publié (`https://swiftstyle.jesololido2004.workers.dev`).
+  Reste `photoApiUrl` : y mettre l'adresse de l'API photo une fois hébergée, et l'ajouter aux
+  `host_permissions` des deux manifestes. Si le site passe sur `swiftstyle.fr`, changer `appUrl`
+  (`https://swiftstyle.fr/*` et `https://*.swiftstyle.fr/*` sont déjà autorisés).
+- Le catalogue des vêtements (`src/lib/recommendation/catalog.ts` du site) ne contient que les
+  trois articles de démonstration (`demo-tee`, `demo-jean`, `demo-veste`). Un vêtement inconnu reçoit
+  le guide de démonstration le plus proche, choisi d'après son nom et sa catégorie (la réponse le
+  dit : `garment.source` vaut `inferred`). Il faut y mettre les vêtements des marques, sous
+  l'identifiant que l'extension lit sur leurs pages, avec leurs vrais guides des tailles.
+- La caméra est demandée au nom du site de la marque (le script tourne dans sa page) : une
+  autorisation permanente donnée là profite aussi aux scripts de ce site. Une page d'extension
+  dédiée (onglet ou fenêtre) éviterait ce partage, au prix d'un changement d'onglet.
+- Les photos du corps sont des données personnelles : information RGPD, consentement (la case de
+  la fenêtre) et hébergement en Europe de l'API photo, avant tout usage par de vrais clients.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## Données
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- Envoyées : les images de la caméra pendant le cadrage, les deux photos, la taille du client, ses
+  mensurations (corrigées ou non), sa coupe préférée, et pour le vêtement : son identifiant, le
+  site, son nom, sa catégorie, son adresse (sans paramètres) et les tailles de la page.
+- Gardées dans le navigateur (`chrome.storage.local`, invisible des sites) : la taille du client
+  et sa coupe préférée. Ni photo ni mensuration.
+- Les API analysent les images en mémoire puis les oublient : rien n'est enregistré ni journalisé.

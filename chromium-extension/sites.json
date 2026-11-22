@@ -7,7 +7,6 @@
       "localhost:3000",
       "127.0.0.1:3000"
     ],
-    "shopKey": "pk_demo_boutique",
     "productPage": {
       "pathPattern": "(boutique-extension|boutique-demo)"
     },
@@ -28,7 +27,6 @@
       "www.uniqlo.com",
       "uniqlo.com"
     ],
-    "shopKey": "pk_demo_boutique",
     "productPage": {
       "pathPattern": "/products/"
     },
@@ -48,7 +46,6 @@
     "matches": [
       "www.leslipfrancais.fr"
     ],
-    "shopKey": "pk_demo_boutique",
     "productPage": {
       "pathPattern": "/products/"
     },
@@ -68,7 +65,6 @@
     "matches": [
       "www.nike.com"
     ],
-    "shopKey": "pk_demo_boutique",
     "productPage": {
       "pathPattern": "/t/"
     },
