@@ -46,21 +46,31 @@ sast_frontend:
 validation_projet:
   extends: .node
   stage: validation
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
   script:
     - npm run typecheck
     - npm test
     - npx opennextjs-cloudflare build
   allow_failure: false
 
-deploy_cloudflare:
-  extends: .node
+deploy_api:
   stage: deploy
+  tags:
+    - swift-vm
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main" && $CLOUDFLARE_API_TOKEN'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
   environment:
-    name: production
-    url: https://swiftstyle.jesololido2004.workers.dev
+    name: production-api
   script:
-    - npx opennextjs-cloudflare build
-    - npx opennextjs-cloudflare deploy
+    - APP_DIR=/opt/swift-api
+    - mkdir -p "$APP_DIR"
+    - rsync -a --delete --exclude '.git' --exclude 'node_modules' --exclude '.next' --exclude '.env' ./ "$APP_DIR/"
+    - cp "$API_ENV_FILE" "$APP_DIR/.env"
+    - chmod 600 "$APP_DIR/.env"
+    - cd "$APP_DIR"
+    - npm ci --no-audit --no-fund
+    - npm run build
+    - pm2 describe swift-api > /dev/null 2>&1 && pm2 reload swift-api --update-env || pm2 start npm --name swift-api -- start
+    - pm2 save
   allow_failure: false
