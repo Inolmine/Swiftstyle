@@ -1,28 +1,26 @@
-# Image Python stable et légère
-FROM python:3.11-slim
-
-# Dépendances système requises par OpenCV et MediaPipe sous Linux
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1 \
-    libglib2.0-0 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Image Node.js 22 officielle
+FROM node:22-slim
 
 WORKDIR /app
 
-# Installation des dépendances Python depuis backend
-COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Certificats pour les téléchargements HTTPS sécurisés
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copie du code backend
-COPY backend/ ./
+# Installation des dépendances
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Téléchargement automatique du modèle MediaPipe Pose Landmarker lors du build
-RUN python scripts/download_model.py
+# Copie de l'ensemble du code source
+COPY . .
 
-# Port dynamique injecté par Railway (par défaut 8000 en local)
-ENV PORT=8000
-EXPOSE 8000
+# Téléchargement du moteur MediaPipe, compilation du widget et build Next.js
+RUN npm run build
 
-# Lancement de FastAPI
-CMD ["python", "start.py"]
+# Variables d'environnement pour l'exécution
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
+
+# Démarrage de Next.js sur 0.0.0.0 et sur le port dynamique injecté par Railway
+CMD ["sh", "-c", "npx next start -H 0.0.0.0 -p ${PORT:-3000}"]
