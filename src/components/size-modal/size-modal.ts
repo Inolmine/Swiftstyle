@@ -452,6 +452,7 @@ export function openSizeModal(opts: SizeModalOptions): () => void {
       return showCameraError("La caméra n'est pas disponible sur cette page (site non sécurisé ou navigateur incompatible).");
     }
 
+    let currentFacingMode: "user" | "environment" = "user";
     const video = h("video", { playsinline: true, muted: true, autoplay: true });
     video.muted = true;
     const overlay = h("canvas", { class: "overlay" });
@@ -467,15 +468,28 @@ export function openSizeModal(opts: SizeModalOptions): () => void {
       front: h("span", { class: "chip active" }, h("span", { class: "dot", text: "1" }), "Face"),
       side: h("span", { class: "chip" }, h("span", { class: "dot", text: "2" }), "Profil"),
     };
+    const flipBtn = h(
+      "button",
+      {
+        type: "button",
+        class: "chip btn-flip",
+        "aria-label": "Tourner la caméra",
+        title: "Tourner la caméra",
+        onclick: () => switchCamera(),
+      },
+      h("span", { class: "flip-ico", ariaHidden: "true" }, "🔄"),
+      "Tourner",
+    );
     const skipBtn = h("button", { type: "button", class: "secondary", hidden: true, text: "Continuer sans profil" });
     const cancelBtn = h("button", { type: "button", class: "secondary", text: "Annuler", onclick: () => showIntro() });
+    const mirror = h("div", { class: "mirror" }, video, overlay);
 
     screen(
       h(
         "div",
         { class: "stage" },
-        h("div", { class: "mirror" }, video, overlay),
-        h("div", { class: "hud-top" }, chips.front, chips.side),
+        mirror,
+        h("div", { class: "hud-top" }, chips.front, chips.side, flipBtn),
         guide,
         count,
         flash,
@@ -542,6 +556,34 @@ export function openSizeModal(opts: SizeModalOptions): () => void {
     function setTip(text: string) {
       tip.textContent = text;
       tip.hidden = !text;
+    }
+
+    async function switchCamera() {
+      if (!camera || !camera.running) return;
+      currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+      mirror.classList.toggle("is-back", currentFacingMode === "environment");
+      setMessage("Changement de caméra…");
+
+      camera.stream.getTracks().forEach((t) => t.stop());
+
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: currentFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false,
+        });
+        if (!alive || !body.contains(video) || !camera || !camera.running) {
+          newStream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        camera.stream = newStream;
+        video.srcObject = newStream;
+        await video.play().catch(() => {});
+        setMessage(s.phase === "front" ? "Pose : de face" : "Pose : de profil");
+      } catch {
+        currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+        mirror.classList.toggle("is-back", currentFacingMode === "environment");
+        setMessage("Impossible de changer de caméra.");
+      }
     }
 
     async function checkLoop() {
@@ -1194,9 +1236,16 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 
 .stage { position: relative; height: min(68vh, 640px); background: #000; border-radius: 8px; overflow: hidden; }
 .mirror { position: absolute; inset: 0; transform: scaleX(-1); }
+.mirror.is-back { transform: scaleX(1); }
 video, .overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
 video { object-fit: contain; }
-.hud-top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; }
+.hud-top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; align-items: center; }
+.btn-flip { cursor: pointer; border: 0; margin-left: auto; display: none; align-items: center; gap: 6px; }
+.btn-flip:hover { background: rgba(255, 255, 255, 0.25); }
+.flip-ico { font-size: 14px; }
+@media (max-width: 768px), (pointer: coarse) {
+  .btn-flip { display: inline-flex; }
+}
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 5px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 14px; font-weight: 600; }
 .chip.active { background: #fff; color: #111; }
 .chip.done { background: #16a34a; color: #fff; }
