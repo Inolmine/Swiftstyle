@@ -227,7 +227,7 @@ export function garment(art: DemoArticle, g: Geo, sz: Body, fillOverride?: strin
         : "");
     return draw([{ t: "p", d: poly([...right, [cx, Y(0.585)], ...left]) }], fillOverride || "url(#denim)", 8, extra, !photo);
   }
-  const v = art === "veste";
+  const v = art === "sweat";
   const gc = half(sz.chest!) + (v ? 8 : 5);
   const gw = Math.max(half(sz.waist!) + (v ? 8 : 6), gc * 0.9);
   const gs = gc * 1.1 + 7;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
+import { EmbedCode } from "@/components/landing/EmbedCode";
 import { crumpleBackground } from "@/components/landing/figures";
 import { Hero } from "@/components/landing/Hero";
 import { PhotoSteps } from "@/components/landing/PhotoSteps";
@@ -34,6 +35,7 @@ export default function HomePage() {
         <ReturnCosts />
         <PhotoSteps />
         <WidgetDemo />
+        <EmbedCode />
         <TrialSignup />
       </main>
       <SiteFooter />

@@ -61,15 +61,15 @@ describe("jean : taille, hanches, cuisse et entrejambe", () => {
   const JEAN = DEMO_ARTICLES.jean.chart;
 
   it("prend en compte la cuisse et l'entrejambe mesurés sur photo", () => {
-    const r = recommendSize(JEAN, { waist: 78, hips: 99, thigh: 56, inseam: 80 });
+    const r = recommendSize(JEAN, { waist: 82, hips: 100, thigh: 58, inseam: 82 });
     expect(r.size).toBe("M");
     expect(r.details.map((d) => d.key)).toEqual(["waist", "hips", "thigh", "inseam"]);
     expect(r.reason).toBe("Taille M : juste à la taille, juste aux hanches, juste aux cuisses, juste de jambe.");
   });
 
   it("entre deux tailles, la cuisse départage", () => {
-    expect(recommendSize(JEAN, { waist: 81, hips: 102, thigh: 56, inseam: 80 }).size).toBe("M");
-    expect(recommendSize(JEAN, { waist: 81, hips: 102, thigh: 61, inseam: 80 }).size).toBe("L");
+    expect(recommendSize(JEAN, { waist: 85.5, hips: 103.5, thigh: 56, inseam: 82 }).size).toBe("M");
+    expect(recommendSize(JEAN, { waist: 85.5, hips: 103.5, thigh: 61, inseam: 82 }).size).toBe("L");
   });
 
   it("dit si la jambe est trop courte ou trop longue", () => {

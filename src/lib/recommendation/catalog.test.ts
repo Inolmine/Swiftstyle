@@ -4,7 +4,7 @@ import { DEMO_ARTICLES } from "./demo-charts";
 
 describe("catalogue des vêtements", () => {
   it("contient les articles de démonstration, sous leur identifiant", () => {
-    expect(GARMENTS.map((g) => g.id)).toEqual(["demo-tee", "demo-jean", "demo-veste"]);
+    expect(GARMENTS.map((g) => g.id)).toEqual(["demo-tee", "demo-jean", "demo-sweat"]);
     expect(findGarment("demo-jean")?.chart).toBe(DEMO_ARTICLES.jean.chart);
   });
 
@@ -25,7 +25,7 @@ describe("catalogue des vêtements", () => {
   });
 
   it("devine le guide d'un vêtement inconnu d'après la page", () => {
-    expect(resolveGarment({ id: " 42 ", title: "Veste en laine" })).toMatchObject({ id: "42", name: "Veste en laine", source: "inferred" });
-    expect(resolveGarment({ id: "demo-veste", title: "Jean" })).toMatchObject({ name: "Veste en laine", source: "catalog" });
+    expect(resolveGarment({ id: " 42 ", title: "Sweat à capuche" })).toMatchObject({ id: "42", name: "Sweat", source: "inferred" });
+    expect(resolveGarment({ id: "demo-sweat", title: "Jean" })).toMatchObject({ name: "Sweat", source: "catalog" });
   });
 });

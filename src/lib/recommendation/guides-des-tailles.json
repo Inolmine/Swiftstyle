@@ -1,0 +1,92 @@
+{
+  "unite": "cm",
+  "articles": {
+    "t_shirt": {
+      "nom": "T-shirt",
+      "tailles": {
+        "XS": {
+          "mesures_vetement": { "demi_tour_poitrine": 47, "longueur_dos": 67, "largeur_epaules": 41, "longueur_manches": 19 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [80, 86], "tour_taille": [66, 72] }
+        },
+        "S": {
+          "mesures_vetement": { "demi_tour_poitrine": 50, "longueur_dos": 69, "largeur_epaules": 43, "longueur_manches": 20 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [86, 92], "tour_taille": [72, 78] }
+        },
+        "M": {
+          "mesures_vetement": { "demi_tour_poitrine": 53, "longueur_dos": 71, "largeur_epaules": 45, "longueur_manches": 21 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [92, 98], "tour_taille": [78, 85] }
+        },
+        "L": {
+          "mesures_vetement": { "demi_tour_poitrine": 56, "longueur_dos": 73, "largeur_epaules": 47, "longueur_manches": 22 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [98, 105], "tour_taille": [85, 93] }
+        },
+        "XL": {
+          "mesures_vetement": { "demi_tour_poitrine": 60, "longueur_dos": 75, "largeur_epaules": 49, "longueur_manches": 23 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [105, 113], "tour_taille": [93, 102] }
+        },
+        "XXL": {
+          "mesures_vetement": { "demi_tour_poitrine": 64, "longueur_dos": 77, "largeur_epaules": 51, "longueur_manches": 24 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [113, 122], "tour_taille": [102, 112] }
+        }
+      }
+    },
+    "jean": {
+      "nom": "Jean",
+      "tailles": {
+        "XS": {
+          "mesures_vetement": { "demi_tour_taille": 37, "demi_tour_bassin": 46, "tour_cuisse": 54, "entrejambe": 78, "ouverture_bas": 17 },
+          "mensurations_corps_recommandees": { "tour_taille": [68, 73], "tour_hanches": [86, 91], "tour_cuisse": [48, 52], "entrejambe": [76, 80] }
+        },
+        "S": {
+          "mesures_vetement": { "demi_tour_taille": 39.5, "demi_tour_bassin": 48.5, "tour_cuisse": 57, "entrejambe": 80, "ouverture_bas": 17.5 },
+          "mensurations_corps_recommandees": { "tour_taille": [74, 79], "tour_hanches": [92, 97], "tour_cuisse": [52, 56], "entrejambe": [78, 82] }
+        },
+        "M": {
+          "mesures_vetement": { "demi_tour_taille": 42, "demi_tour_bassin": 51, "tour_cuisse": 60, "entrejambe": 82, "ouverture_bas": 18 },
+          "mensurations_corps_recommandees": { "tour_taille": [80, 85], "tour_hanches": [98, 103], "tour_cuisse": [56, 60], "entrejambe": [80, 84] }
+        },
+        "L": {
+          "mesures_vetement": { "demi_tour_taille": 44.5, "demi_tour_bassin": 53.5, "tour_cuisse": 63, "entrejambe": 82, "ouverture_bas": 18.5 },
+          "mensurations_corps_recommandees": { "tour_taille": [86, 92], "tour_hanches": [104, 109], "tour_cuisse": [60, 64], "entrejambe": [81, 85] }
+        },
+        "XL": {
+          "mesures_vetement": { "demi_tour_taille": 47, "demi_tour_bassin": 56, "tour_cuisse": 66, "entrejambe": 84, "ouverture_bas": 19 },
+          "mensurations_corps_recommandees": { "tour_taille": [93, 100], "tour_hanches": [110, 116], "tour_cuisse": [64, 68], "entrejambe": [82, 86] }
+        },
+        "XXL": {
+          "mesures_vetement": { "demi_tour_taille": 50, "demi_tour_bassin": 59, "tour_cuisse": 70, "entrejambe": 84, "ouverture_bas": 19.5 },
+          "mensurations_corps_recommandees": { "tour_taille": [101, 108], "tour_hanches": [117, 124], "tour_cuisse": [68, 73], "entrejambe": [82, 86] }
+        }
+      }
+    },
+    "sweat": {
+      "nom": "Sweat",
+      "tailles": {
+        "XS": {
+          "mesures_vetement": { "demi_tour_poitrine": 51, "longueur_dos": 66, "largeur_epaules": 44, "longueur_manches": 62 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [80, 86], "tour_taille": [66, 73] }
+        },
+        "S": {
+          "mesures_vetement": { "demi_tour_poitrine": 54, "longueur_dos": 68, "largeur_epaules": 46, "longueur_manches": 64 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [86, 93], "tour_taille": [73, 80] }
+        },
+        "M": {
+          "mesures_vetement": { "demi_tour_poitrine": 57, "longueur_dos": 70, "largeur_epaules": 48, "longueur_manches": 66 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [93, 100], "tour_taille": [80, 88] }
+        },
+        "L": {
+          "mesures_vetement": { "demi_tour_poitrine": 60, "longueur_dos": 72, "largeur_epaules": 51, "longueur_manches": 67 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [100, 108], "tour_taille": [88, 96] }
+        },
+        "XL": {
+          "mesures_vetement": { "demi_tour_poitrine": 64, "longueur_dos": 74, "largeur_epaules": 54, "longueur_manches": 68 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [108, 116], "tour_taille": [96, 105] }
+        },
+        "XXL": {
+          "mesures_vetement": { "demi_tour_poitrine": 68, "longueur_dos": 76, "largeur_epaules": 57, "longueur_manches": 69 },
+          "mensurations_corps_recommandees": { "tour_poitrine": [116, 126], "tour_taille": [105, 115] }
+        }
+      }
+    }
+  }
+}

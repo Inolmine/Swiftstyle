@@ -9,6 +9,8 @@ body {
   --sd-line: #d8dde7;
   --sd-post: #49cc90;
   --sd-post-bg: rgba(73, 204, 144, 0.1);
+  --sd-get: #61affe;
+  --sd-get-bg: rgba(97, 175, 254, 0.1);
   --sd-blue: #4990e2;
   --sd-red: #f93e3e;
   --sd-code-bg: #333333;
@@ -428,6 +430,109 @@ body {
   border-color: var(--sd-post);
 }
 .sd-link-card code {
+  color: var(--sd-muted);
+  font-size: 0.8rem;
+}
+
+.sd-op-get {
+  border-color: var(--sd-get);
+  background: var(--sd-get-bg);
+}
+.sd-op-get .sd-method {
+  background: var(--sd-get);
+}
+.sd-op-get .sd-op-body {
+  border-top-color: var(--sd-get);
+}
+.sd-none {
+  margin: 0;
+  color: var(--sd-muted);
+  font-style: italic;
+}
+.sd-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.sd-embed {
+  padding: 12px 4px 4px;
+}
+.sd-embed p {
+  max-width: 80ch;
+  margin: 0 0 10px;
+}
+.sd-embed h4 {
+  margin: 22px 0 8px;
+  font-size: 0.95rem;
+}
+.sd-embed .sd-tabs {
+  margin-top: 16px;
+}
+.sd-snippet {
+  position: relative;
+}
+.sd-snippet .sd-json {
+  padding-right: 96px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.sd-embed .sd-snippet-note {
+  margin-top: 6px;
+  color: var(--sd-muted);
+  font-size: 0.85rem;
+}
+.sd-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.sd-copy:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.sd-copy:focus-visible {
+  outline: 2px solid var(--sd-get);
+  outline-offset: 2px;
+}
+.sd-preview {
+  max-width: 380px;
+  padding: 16px;
+  border: 1px solid var(--sd-line);
+  border-radius: 6px;
+  background: #fff;
+}
+.sd-preview-title {
+  font-weight: 700;
+}
+.sd-preview-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sd-preview-sizes button {
+  min-width: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--sd-line);
+  border-radius: 4px;
+  background: #fff;
+}
+.sd-preview-sizes button[aria-checked="true"] {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+.sd-preview .sd-preview-state {
+  margin: 0;
   color: var(--sd-muted);
   font-size: 0.8rem;
 }

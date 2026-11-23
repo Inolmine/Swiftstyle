@@ -22,13 +22,13 @@ describe("POST /api/v1/recommend", () => {
 
   it("prend le guide du vêtement du catalogue d'après son identifiant, quoi que dise la page", async () => {
     const body = await (await post({ measurements: MEASURED, garment: { id: "demo-jean", title: "T-shirt col rond" } })).json();
-    expect(body.garment).toEqual({ id: "demo-jean", name: "Jean droit", source: "catalog" });
+    expect(body.garment).toEqual({ id: "demo-jean", name: "Jean", source: "catalog" });
     expect(body.details.map((d: { key: string }) => d.key)).toEqual(["waist", "hips", "thigh", "inseam"]);
   });
 
   it("choisit un guide de démo d'après la page pour un vêtement inconnu", async () => {
     const body = await (await post({ measurements: MEASURED, garment: { id: "E486176-000", shop: "www.uniqlo.com", category: "Homme > Jeans" } })).json();
-    expect(body.garment).toEqual({ id: "E486176-000", name: "Jean droit", source: "inferred" });
+    expect(body.garment).toEqual({ id: "E486176-000", name: "Jean", source: "inferred" });
   });
 
   it("refuse une demande sans identifiant de vêtement", async () => {
@@ -45,8 +45,8 @@ describe("POST /api/v1/recommend", () => {
   });
 
   it("met pageSize à null quand la page ne vend pas la taille", async () => {
-    const body = await (await post({ measurements: MEASURED, garment: { id: "demo-tee", sizes: ["XS", "S"] } })).json();
-    expect(body.size).toBe("M");
+    const body = await (await post({ measurements: MEASURED, garment: { id: "demo-tee", sizes: ["M", "L"] } })).json();
+    expect(body.size).toBe("S");
     expect(body.pageSize).toBeNull();
   });
 
