@@ -1,0 +1,14 @@
+node_modules/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+.open-next/
+.wrangler/
+swiftstyle.fr-web-extension/
+
+.env
+.env.local
+.env*.local
+# Secrets locaux de Wrangler (aperçu du Worker en local) : ne jamais les versionner.
+.dev.vars
+.dev.vars.*

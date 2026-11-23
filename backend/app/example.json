@@ -1,0 +1,31 @@
+{
+  "measurements": { "chest": 92, "waist": 76, "hips": 96, "thigh": 53, "inseam": 74 },
+  "zones": {
+    "chest": { "circumference": 92, "width": 34.0, "depth": 24.0 },
+    "waist": { "circumference": 76, "width": 28.0, "depth": 20.0 },
+    "hips": { "circumference": 96, "width": 36.0, "depth": 24.8 },
+    "thigh": { "circumference": 53, "width": 16.0, "depth": 18.0 }
+  },
+  "depthSource": "profile",
+  "front": {
+    "cmPerPx": 0.2,
+    "lines": {
+      "chest": { "y": 0.337, "x1": 0.3583, "x2": 0.6417 },
+      "waist": { "y": 0.407, "x1": 0.3833, "x2": 0.6167 },
+      "hips": { "y": 0.531, "x1": 0.35, "x2": 0.65 },
+      "thigh": { "y": 0.598, "x1": 0.3583, "x2": 0.4917 }
+    },
+    "inseam": { "x": 0.5008, "y1": 0.58, "y2": 0.95 }
+  },
+  "side": {
+    "cmPerPx": 0.2,
+    "lines": {
+      "chest": { "y": 0.337, "x1": 0.4, "x2": 0.6 },
+      "waist": { "y": 0.43, "x1": 0.4167, "x2": 0.5833 },
+      "hips": { "y": 0.531, "x1": 0.3967, "x2": 0.6033 },
+      "thigh": { "y": 0.598, "x1": 0.425, "x2": 0.575 }
+    },
+    "inseam": null
+  },
+  "warnings": []
+}
