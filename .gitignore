@@ -3,8 +3,12 @@ node_modules/
 *.tsbuildinfo
 next-env.d.ts
 .open-next/
+# Widget compilé (npm run build:widget) et fichiers de MediaPipe (npm run prepare:mediapipe), recréés avant chaque build.
+/public/widget/
+/public/mediapipe/
 .wrangler/
 swiftstyle.fr-web-extension/
+swiftstyle-api/
 
 .env
 .env.local

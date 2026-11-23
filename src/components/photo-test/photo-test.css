@@ -46,8 +46,8 @@ body {
   color: inherit;
   font-weight: 700;
 }
-.pt-status.is-ok { background: #e6f2e6; }
-.pt-status.is-no_model,
+.pt-status.is-api,
+.pt-status.is-browser { background: #e6f2e6; }
 .pt-status.is-down { background: #fbe9e4; color: var(--ss-alert); }
 
 .pt-product {

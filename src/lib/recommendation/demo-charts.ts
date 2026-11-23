@@ -1,49 +1,52 @@
-import type { SizeChart } from "./types";
+import GUIDES from "./guides-des-tailles.json";
+import type { MeasureKey, SizeChart } from "./types";
 
-export type DemoArticle = "tee" | "jean" | "veste";
+export type DemoArticle = "tee" | "jean" | "sweat";
 
-const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+const BODY_FIELDS: Record<string, MeasureKey> = {
+  tour_poitrine: "chest",
+  tour_taille: "waist",
+  tour_hanches: "hips",
+  tour_cuisse: "thigh",
+  entrejambe: "inseam",
+};
 
-export const DEMO_ARTICLES: Record<DemoArticle, { name: string; category: string; externalId: string; chart: SizeChart }> = {
+interface Guide {
+  nom: string;
+  tailles: Record<string, { mensurations_corps_recommandees: Record<string, number[]> }>;
+}
+
+/** Guide des tailles de guides-des-tailles.json : les intervalles de mensurations du corps, taille par taille. */
+export function chartFromGuide(guide: Guide, weights: SizeChart["weights"]): SizeChart {
+  const ranges: SizeChart["ranges"] = {};
+  for (const [size, { mensurations_corps_recommandees: body }] of Object.entries(guide.tailles)) {
+    for (const [field, range] of Object.entries(body)) {
+      const key = BODY_FIELDS[field];
+      const [min, max] = range;
+      if (!key) throw new Error(`${guide.nom}, taille ${size} : mensuration inconnue « ${field} »`);
+      if (range.length !== 2 || min === undefined || max === undefined) throw new Error(`${guide.nom}, taille ${size} : ${field} n'est pas un intervalle [min, max]`);
+      (ranges[key] ??= []).push([min, max]);
+    }
+  }
+  return { sizes: Object.keys(guide.tailles), ranges, weights };
+}
+
+const { t_shirt, jean, sweat } = GUIDES.articles;
+
+export const DEMO_ARTICLES: Record<DemoArticle, { name: string; externalId: string; chart: SizeChart }> = {
   tee: {
-    name: "T-shirt en coton",
-    category: "tshirt",
+    name: t_shirt.nom,
     externalId: "demo-tee",
-    chart: {
-      sizes: SIZES,
-      ranges: {
-        chest: [[78, 84], [84, 90], [90, 97], [97, 104], [104, 112], [112, 120]],
-        waist: [[64, 70], [70, 77], [77, 84], [84, 92], [92, 100], [100, 110]],
-      },
-      weights: { chest: 0.75, waist: 0.25 },
-    },
+    chart: chartFromGuide(t_shirt, { chest: 0.75, waist: 0.25 }),
   },
   jean: {
-    name: "Jean droit",
-    category: "jean",
+    name: jean.nom,
     externalId: "demo-jean",
-    chart: {
-      sizes: SIZES,
-      ranges: {
-        waist: [[62, 68], [68, 74], [74, 81], [81, 88], [88, 96], [96, 104]],
-        hips: [[84, 90], [90, 96], [96, 102], [102, 108], [108, 115], [115, 122]],
-        thigh: [[46, 50], [50, 54], [54, 58], [58, 62], [62, 67], [67, 72]],
-        inseam: [[74, 78], [76, 80], [78, 82], [79, 83], [80, 84], [81, 85]],
-      },
-      weights: { waist: 0.45, hips: 0.3, thigh: 0.15, inseam: 0.1 },
-    },
+    chart: chartFromGuide(jean, { waist: 0.45, hips: 0.3, thigh: 0.15, inseam: 0.1 }),
   },
-  veste: {
-    name: "Veste en laine",
-    category: "veste",
-    externalId: "demo-veste",
-    chart: {
-      sizes: SIZES,
-      ranges: {
-        chest: [[80, 86], [86, 92], [92, 99], [99, 106], [106, 114], [114, 122]],
-        waist: [[66, 72], [72, 79], [79, 86], [86, 94], [94, 102], [102, 112]],
-      },
-      weights: { chest: 0.8, waist: 0.2 },
-    },
+  sweat: {
+    name: sweat.nom,
+    externalId: "demo-sweat",
+    chart: chartFromGuide(sweat, { chest: 0.8, waist: 0.2 }),
   },
 };

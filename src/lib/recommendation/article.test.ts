@@ -9,19 +9,22 @@ describe("articleFor", () => {
     expect(articleFor({ url: "https://www.nike.com/fr/t/pantalon-de-jogging-tech-fleece" })).toBe("jean");
   });
 
-  it("reconnaît une veste, même en jean", () => {
-    expect(articleFor({ title: "Veste en jean oversize" })).toBe("veste");
-    expect(articleFor({ url: "https://www.uniqlo.com/fr/fr/products/E470070-000/doudoune-ultra-light" })).toBe("veste");
+  it("prend le guide du sweat pour un sweat, un pull ou une veste, même en jean", () => {
+    expect(articleFor({ title: "Sweat à capuche" })).toBe("sweat");
+    expect(articleFor({ title: "Hooded Sweatshirt" })).toBe("sweat");
+    expect(articleFor({ title: "Pull col rond" })).toBe("sweat");
+    expect(articleFor({ title: "Veste en jean oversize" })).toBe("sweat");
+    expect(articleFor({ url: "https://www.uniqlo.com/fr/fr/products/E470070-000/doudoune-ultra-light" })).toBe("sweat");
   });
 
-  it("garde le t-shirt pour les hauts, y compris « short sleeve »", () => {
+  it("garde le t-shirt pour les autres hauts, y compris « short sleeve »", () => {
     expect(articleFor({ title: "Short Sleeve Crew Neck T-Shirt" })).toBe("tee");
-    expect(articleFor({ title: "Pull col rond" })).toBe("tee");
+    expect(articleFor({ title: "Débardeur" })).toBe("tee");
     expect(articleFor({})).toBe("tee");
   });
 
   it("préfère la catégorie au nom", () => {
-    expect(articleFor({ category: "Vestes", title: "Le Jean" })).toBe("veste");
+    expect(articleFor({ category: "Vestes", title: "Le Jean" })).toBe("sweat");
   });
 });
 

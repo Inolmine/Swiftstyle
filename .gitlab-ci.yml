@@ -43,13 +43,6 @@ sast_frontend:
     - semgrep scan --config auto --error src/ integrations/ next.config.ts open-next.config.ts
   allow_failure: false
 
-sast_backend:
-  stage: security
-  image: semgrep/semgrep
-  script:
-    - semgrep scan --config auto --error backend/app/ backend/scripts/
-  allow_failure: false
-
 validation_projet:
   extends: .node
   stage: validation
@@ -59,15 +52,6 @@ validation_projet:
     - npx opennextjs-cloudflare build
   allow_failure: false
 
-validation_backend:
-  stage: validation
-  image: python:3.14-slim
-  script:
-    - cd backend
-    - pip install --no-cache-dir -r requirements-dev.txt
-    - pytest -q
-  allow_failure: false
-
 deploy_cloudflare:
   extends: .node
   stage: deploy
@@ -75,7 +59,7 @@ deploy_cloudflare:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main" && $CLOUDFLARE_API_TOKEN'
   environment:
     name: production
-    url: https://swiftstyle.fr
+    url: https://swiftstyle.jesololido2004.workers.dev
   script:
     - npx opennextjs-cloudflare build
     - npx opennextjs-cloudflare deploy

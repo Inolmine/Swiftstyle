@@ -87,7 +87,19 @@ export const MeasureInputSchema = z
       .meta({ description: "Photo de profil, de la tête aux pieds. Facultative mais conseillée : sans elle, la profondeur du corps est estimée." }),
     heightCm: z.number().min(140).max(210).meta({ description: "Taille du client, en cm (140 à 210). Donne l'échelle de la photo.", examples: [178] }),
   })
-  .meta({ description: "Champs envoyés à l'API (formulaire multipart)." });
+  .meta({ description: "Photos et taille du client, mesurées par l'API photo ou dans son navigateur." });
+
+export type PoseView = "front" | "side";
+
+export interface PoseCheck {
+  ready: boolean;
+  orientation: "front" | "side" | "turning" | null;
+  issue: string | null;
+  message: string;
+  tips: string[];
+  box: { x1: number; y1: number; x2: number; y2: number } | null;
+  landmarks: { x: number; y: number; visibility: number }[];
+}
 
 export type MeasuredLine = z.infer<typeof MeasuredLineSchema>;
 export type InseamLine = z.infer<typeof InseamLineSchema>;
@@ -97,14 +109,15 @@ export type MeasureInput = z.infer<typeof MeasureInputSchema>;
 
 export const MEASURE_ERRORS = {
   invalid_image: "fichier illisible",
-  image_too_large: "photo de plus de 10 Mo",
+  image_too_large: "photo de plus de 10 Mo (API photo)",
   no_person: "personne non détectée",
   pose_not_detected: "épaules ou hanches mal visibles, posture non reconnue",
   body_not_fully_visible: "pieds non visibles, ou silhouette coupée par le bord de la photo",
   measure_failed: "un tour n'a pas pu être lu",
   invalid_input: "taille hors limites (140 à 210 cm) ou photo de face manquante",
-  unreachable: "API photo injoignable",
-  unexpected_response: "réponse de l'API dans une forme inattendue",
+  engine_unavailable: "MediaPipe n'a pas pu se charger ou tourner dans ce navigateur",
+  unreachable: "API photo injoignable, trop lente, en panne ou saturée : la mesure passe au navigateur",
+  unexpected_response: "réponse de l'API photo dans une forme inattendue : la mesure passe au navigateur",
 } as const;
 export type MeasureErrorCode = keyof typeof MEASURE_ERRORS;
 
@@ -116,4 +129,18 @@ export class MeasureError extends Error {
     super(message);
     this.name = "MeasureError";
   }
+}
+
+/** Erreur de l'API photo elle-même, pas de la photo : on mesure alors dans le navigateur. */
+export const apiIsDown = (err: unknown) => err instanceof MeasureError && (err.code === "unreachable" || err.code === "unexpected_response");
+
+/** Vérifie la taille et la photo de face avant de mesurer (dans le navigateur ou par l'API). */
+export function parseMeasureInput(input: MeasureInput): MeasureInput {
+  const parsed = MeasureInputSchema.safeParse(input);
+  if (parsed.success) return parsed.data;
+  const field = parsed.error.issues[0]?.path[0];
+  throw new MeasureError(
+    "invalid_input",
+    field === "heightCm" ? "La taille doit être comprise entre 140 et 210 cm." : "Il faut une photo de face (et, si possible, de profil).",
+  );
 }

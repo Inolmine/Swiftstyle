@@ -17,7 +17,7 @@ export const RecommendRequestSchema = z
       })
       .meta({
         description:
-          "Mensurations du client en cm : le champ measurements de la réponse de l'API photo (POST /v1/photo/measure), éventuellement corrigées par le client. Chacune est facultative, mais il faut celles dont le guide du vêtement a besoin.",
+          "Mensurations du client en cm : le champ measurements de la mesure sur photo (faite dans le navigateur, ou par l'API photo pour l'extension), éventuellement corrigées par le client. Chacune est facultative, mais il faut celles dont le guide du vêtement a besoin.",
       }),
     fit: z
       .enum(FIT_PREFERENCES)
@@ -92,7 +92,7 @@ export const RecommendResponseSchema = z
     garment: z
       .object({
         id: z.string().meta({ description: "Identifiant du vêtement, celui de la demande." }),
-        name: z.string().meta({ description: "Nom du vêtement dans le catalogue, ou de l'article de démonstration dont le guide a servi.", examples: ["T-shirt en coton"] }),
+        name: z.string().meta({ description: "Nom du vêtement dans le catalogue, ou de l'article de démonstration dont le guide a servi.", examples: ["T-shirt"] }),
         source: z.enum(["catalog", "inferred"]).meta({
           description:
             "catalog : vêtement connu du catalogue, avec son propre guide des tailles. inferred : vêtement inconnu, guide d'un article de démonstration choisi d'après son nom et sa catégorie.",
@@ -129,19 +129,19 @@ export const RECOMMEND_RESPONSES: { status: number; description: string; example
     description: "Taille recommandée.",
     example: {
       ok: true,
-      size: "M",
-      pageSize: "M",
+      size: "S",
+      pageSize: "S",
       confidence: 0.89,
-      reason: "Taille M : un peu ample à la poitrine, ample à la taille.",
+      reason: "Taille S : près du corps à la poitrine, juste à la taille.",
       details: [
-        { key: "chest", position: -0.43, feel: "Un peu ample" },
-        { key: "waist", position: -1.29, feel: "Ample" },
+        { key: "chest", position: 1, feel: "Près du corps" },
+        { key: "waist", position: 0.33, feel: "Juste" },
       ],
       alternatives: [
-        { size: "S", confidence: 0.77, note: "serré à la poitrine" },
-        { size: "L", confidence: 0.52, note: "ample à la taille" },
+        { size: "XS", confidence: 0.49, note: "serré à la poitrine" },
+        { size: "M", confidence: 0.81, note: "ample à la taille" },
       ],
-      garment: { id: "demo-tee", name: "T-shirt en coton", source: "catalog" },
+      garment: { id: "demo-tee", name: "T-shirt", source: "catalog" },
     },
   },
   { status: 400, description: "Champ manquant ou invalide (par exemple garment.id absent).", example: { ok: false, error: "invalid_input" } },

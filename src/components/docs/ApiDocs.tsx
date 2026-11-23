@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import Script from "next/script";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { DocOperation, Docs } from "@/lib/docs/spec";
+import { useHydrated } from "@/lib/use-hydrated";
+import { widgetSnippets } from "@/lib/widget-embed";
 
 interface S {
   type?: string;
@@ -176,8 +179,9 @@ function RunResult({ run, onClear }: { run: Run; onClear: () => void }) {
   );
 }
 
-function TrialBody({ op, schema, trying }: { op: DocOperation; schema: S; trying: boolean }) {
-  const [text, setText] = useState(JSON.stringify(op.input.example, null, 2));
+function TrialBody({ op, schema, trying }: { op: DocOperation; schema?: S; trying: boolean }) {
+  const input = op.input;
+  const [text, setText] = useState(input ? JSON.stringify(input.example, null, 2) : "");
   const [busy, setBusy] = useState(false);
   const [run, setRun] = useState<Run | null>(null);
 
@@ -185,7 +189,10 @@ function TrialBody({ op, schema, trying }: { op: DocOperation; schema: S; trying
     setBusy(true);
     const t0 = performance.now();
     try {
-      const res = await fetch(op.path, { method: "POST", headers: { "content-type": op.input.contentType }, body: text });
+      const res = await fetch(
+        op.path,
+        input ? { method: op.method, headers: { "content-type": input.contentType }, body: text } : { method: op.method, cache: "no-store" },
+      );
       setRun({ code: String(res.status), body: await res.json().catch(() => null), ms: Math.round(performance.now() - t0) });
     } catch (e) {
       setRun({ code: "Erreur", body: { message: String(e) }, ms: Math.round(performance.now() - t0) });
@@ -194,7 +201,18 @@ function TrialBody({ op, schema, trying }: { op: DocOperation; schema: S; trying
     }
   };
 
-  if (!trying) return <ExampleOrSchema example={op.input.example} schema={schema} name={op.input.schema} />;
+  if (!input || !schema) {
+    if (!trying) return <p className="sd-none">Aucun paramètre.</p>;
+    return (
+      <>
+        <button type="button" className="sd-execute" disabled={busy} onClick={execute}>
+          {busy ? "Envoi…" : "Exécuter"}
+        </button>
+        {run && <RunResult run={run} onClear={() => setRun(null)} />}
+      </>
+    );
+  }
+  if (!trying) return <ExampleOrSchema example={input.example} schema={schema} name={input.schema} />;
   return (
     <>
       <p className="sd-warning">
@@ -213,9 +231,9 @@ function TrialBody({ op, schema, trying }: { op: DocOperation; schema: S; trying
 function Operation({ op, schemas }: { op: DocOperation; schemas: Docs["schemas"] }) {
   const [open, setOpen] = useState(false);
   const [trying, setTrying] = useState(false);
-  const input = schemas[op.input.schema] as S;
+  const input = op.input ? (schemas[op.input.schema] as S) : undefined;
   return (
-    <div className="sd-op sd-op-post" id={`op-${op.id}`}>
+    <div className={`sd-op sd-op-${op.method.toLowerCase()}`} id={`op-${op.id}`}>
       <button type="button" className="sd-op-summary" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span className="sd-method">{op.method}</span>
         <span className="sd-path">{op.path}</span>
@@ -232,7 +250,13 @@ function Operation({ op, schemas }: { op: DocOperation; schemas: Docs["schemas"]
 
           <div className="sd-section-head">
             <h4>
-              {op.input.label} <span className="sd-ct">{op.input.contentType}</span>
+              {op.input ? (
+                <>
+                  {op.input.label} <span className="sd-ct">{op.input.contentType}</span>
+                </>
+              ) : (
+                "Paramètres"
+              )}
             </h4>
             <button type="button" className={trying ? "sd-btn is-cancel" : "sd-btn"} onClick={() => setTrying(!trying)}>
               {trying ? "Annuler" : "Essayer"}
@@ -282,6 +306,135 @@ function Operation({ op, schemas }: { op: DocOperation; schemas: Docs["schemas"]
   );
 }
 
+function Copyable({ code }: { code: string }) {
+  const [copied, setCopied] = useState<"ok" | "failed" | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const codeRef = useRef<HTMLElement>(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied("ok");
+    } catch {
+      // Presse-papiers refusé : le code est sélectionné, Ctrl+C suffit.
+      if (codeRef.current) window.getSelection()?.selectAllChildren(codeRef.current);
+      setCopied("failed");
+    }
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(null), 2500);
+  };
+  return (
+    <div className="sd-snippet">
+      <pre className="sd-json">
+        <code ref={codeRef}>{code}</code>
+      </pre>
+      <button type="button" className="sd-copy" onClick={copy}>
+        {copied === "ok" ? "Copié" : copied === "failed" ? "Code sélectionné : Ctrl+C" : "Copier"}
+      </button>
+      <span className="sd-sr" aria-live="polite">
+        {copied === "ok" ? "Code copié" : ""}
+      </span>
+    </div>
+  );
+}
+
+const PREVIEW_SIZES = ["XS", "S", "M", "L", "XL"];
+
+/** Le widget tel que les marques l'installent, chargé par le même script, sur une fausse fiche produit. */
+function WidgetPreview({ scriptPath }: { scriptPath: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState("Connexion au site et à l'API photo…");
+  const [size, setSize] = useState<string | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ready = () => setState("La mesure est possible (API photo, ou dans le navigateur) : le bouton est affiché.");
+    const unavailable = () => setState("Le site ne répond pas, ou aucune mesure n'est possible : le bouton n'est pas affiché. La console du navigateur dit pourquoi.");
+    const chosen = (e: Event) => {
+      e.preventDefault();
+      setSize((e as CustomEvent<{ size: string }>).detail.size);
+    };
+    el.addEventListener("swiftstyle:ready", ready);
+    el.addEventListener("swiftstyle:unavailable", unavailable);
+    el.addEventListener("swiftstyle:size", chosen);
+    return () => {
+      el.removeEventListener("swiftstyle:ready", ready);
+      el.removeEventListener("swiftstyle:unavailable", unavailable);
+      el.removeEventListener("swiftstyle:size", chosen);
+    };
+  }, []);
+  return (
+    <div className="sd-preview">
+      <p className="sd-preview-title">T-shirt en coton bio · 39,00 €</p>
+      <div className="sd-preview-sizes" role="radiogroup" aria-label="Taille">
+        {PREVIEW_SIZES.map((s) => (
+          <button key={s} type="button" role="radio" aria-checked={size === s} onClick={() => setSize(s)}>
+            {s}
+          </button>
+        ))}
+      </div>
+      <div ref={ref} data-swiftstyle="" data-product-id="demo-tee" data-product-name="T-shirt en coton bio" data-sizes={PREVIEW_SIZES.join(",")} />
+      <p className="sd-preview-state" aria-live="polite">
+        {state}
+      </p>
+      <Script src={scriptPath} strategy="afterInteractive" />
+    </div>
+  );
+}
+
+function Embed({ docs }: { docs: Docs }) {
+  const hydrated = useHydrated();
+  const snippets = widgetSnippets(hydrated ? window.location.origin : docs.origin);
+  const [tab, setTab] = useState(snippets[0]!.id);
+  const current = snippets.find((s) => s.id === tab) ?? snippets[0]!;
+  return (
+    <div className="sd-embed">
+      {docs.embed.description.map((p) => (
+        <p key={p}>{p}</p>
+      ))}
+      <div className="sd-tabs" role="tablist" aria-label="Plateforme">
+        {snippets.map((s) => (
+          <button key={s.id} type="button" role="tab" aria-selected={tab === s.id} onClick={() => setTab(s.id)}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <Copyable code={current.code} />
+      {current.note && <p className="sd-snippet-note">{current.note}</p>}
+
+      <h4>Aperçu</h4>
+      <WidgetPreview scriptPath={docs.embed.scriptPath} />
+
+      <h4>Attributs de l&apos;élément data-swiftstyle</h4>
+      <table className="sd-params">
+        <tbody>
+          {docs.embed.attributes.map((a) => (
+            <tr key={a.name}>
+              <td className="sd-prop-name">{a.name}</td>
+              <td className="sd-desc">{a.description}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h4>Événements, envoyés sur cet élément</h4>
+      <table className="sd-params">
+        <tbody>
+          {docs.embed.events.map((e) => (
+            <tr key={e.name}>
+              <td className="sd-prop-name">{e.name}</td>
+              <td className="sd-desc">{e.description}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h4>Apparence</h4>
+      <p>{docs.embed.style}</p>
+    </div>
+  );
+}
+
 function Tag({ name, description, children }: { name: string; description: string; children: ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
@@ -322,6 +475,10 @@ export function ApiDocs({ docs }: { docs: Docs }) {
             </a>
           ))}
         </div>
+
+        <Tag name="Intégrer le widget" description="Le code à copier sur les fiches produit des marques : bouton « Trouver ma taille » et sa fenêtre.">
+          <Embed docs={docs} />
+        </Tag>
 
         {docs.tags.map((tag) => (
           <Tag key={tag.name} name={tag.name} description={tag.description}>

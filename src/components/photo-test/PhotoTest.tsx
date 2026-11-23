@@ -2,14 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import {
-  PHOTO_API_DOCS_URL,
-  PHOTO_API_URL,
+  MEDIAPIPE_VERSION,
   PHOTO_ZONES,
   MeasureError,
   adjustMeasurement,
   initialLines,
-  measureFromPhotos,
-  photoApiHealth,
+  createMeasurer,
   type EditedLines,
   type InseamLine,
   type MeasuredLine,
@@ -39,7 +37,7 @@ const FITS: [FitPreference, string][] = [
   ["ample", "Ample"],
 ];
 
-type Health = "checking" | "ok" | "no_model" | "down";
+type Health = "checking" | "api" | "browser" | "down";
 
 function usePreview(file: File | null): string | null {
   const [url, setUrl] = useState<string | null>(null);
@@ -224,6 +222,7 @@ export function PhotoTest() {
   const [lines, setLines] = useState<EditedLines | null>(null);
   const [health, setHealth] = useState<Health>("checking");
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const measurer = useMemo(() => createMeasurer({ onFallback: () => setHealth("browser") }), []);
 
   const { name, chart } = DEMO_ARTICLES[article];
   const adjusted = useMemo(() => (result && lines ? adjustMeasurement(result.data, lines) : null), [result, lines]);
@@ -238,8 +237,14 @@ export function PhotoTest() {
     setLines((prev) => (prev ? { ...prev, inseam: update(prev.inseam) } : prev));
 
   useEffect(() => {
-    photoApiHealth().then((h) => setHealth(!h.ok ? "down" : h.modelReady ? "ok" : "no_model"));
-  }, []);
+    measurer
+      .mode()
+      .then(async (mode) => {
+        await measurer.preload();
+        setHealth(mode);
+      })
+      .catch(() => setHealth("down"));
+  }, [measurer]);
 
   const open = () => {
     setError(null);
@@ -252,7 +257,7 @@ export function PhotoTest() {
     setLoading(true);
     setError(null);
     try {
-      const data = await measureFromPhotos({ front, side, heightCm });
+      const data = await measurer.measure({ front, side, heightCm });
       setResult({ data, front, side });
       setLines(initialLines(data));
     } catch (e) {
@@ -277,15 +282,11 @@ export function PhotoTest() {
   return (
     <div className="pt">
       <p className={`pt-status is-${health}`} role="status">
-        Page de test · API photo {PHOTO_API_URL} :{" "}
-        {health === "checking" && "vérification…"}
-        {health === "ok" && "en ligne"}
-        {health === "no_model" && "en ligne, mais modèle MediaPipe absent (python scripts/download_model.py)"}
-        {health === "down" && "injoignable (lancer le backend, voir backend/README.md)"}
-        {" · "}
-        <a href={PHOTO_API_DOCS_URL} target="_blank" rel="noreferrer">
-          Documentation de l&apos;API (Swagger)
-        </a>
+        Page de test · mesure :{" "}
+        {health === "checking" && "recherche de l'API photo…"}
+        {health === "api" && "par l'API photo (PHOTO_API_URL), rien de lourd dans le navigateur"}
+        {health === "browser" && `dans le navigateur, MediaPipe ${MEDIAPIPE_VERSION} : pas d'API photo, ou elle ne répond pas ; les photos ne quittent pas l'appareil`}
+        {health === "down" && "indisponible (pas d'API photo, et MediaPipe ne se charge pas : npm run prepare:mediapipe, ou navigateur trop ancien)"}
       </p>
 
       <main className="pt-product">
@@ -501,7 +502,7 @@ export function PhotoTest() {
               )}
 
               <details className="pt-raw">
-                <summary>Réponse brute de l&apos;API (avant vos corrections)</summary>
+                <summary>Résultat brut de la mesure (avant vos corrections)</summary>
                 <pre>{JSON.stringify(result.data, null, 2)}</pre>
               </details>
 

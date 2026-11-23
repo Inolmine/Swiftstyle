@@ -1,20 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { DEMO_ARTICLES, estimateBody, type BodyKey, type DemoArticle, type FitPreference } from "@/lib/recommendation";
-import { recommend, type Measures } from "./figures";
+import { DEMO_ARTICLES, type DemoArticle } from "@/lib/recommendation";
 
-type Step = 1 | 2 | 3;
 type View = "face" | "detail";
-
-const LABEL: Record<BodyKey, string> = { chest: "Poitrine", waist: "Tour de taille", hips: "Hanches" };
-const BODY: { key: BodyKey; id: string; label: string; min: number; max: number }[] = [
-  { key: "chest", id: "m-c", label: "Tour de poitrine", min: 70, max: 130 },
-  { key: "waist", id: "m-t", label: "Tour de taille", min: 55, max: 125 },
-  { key: "hips", id: "m-hi", label: "Tour de hanches", min: 75, max: 135 },
-];
-const shotWeight = (h: number) => Math.round(23 * (h / 100) ** 2);
-const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 interface Product {
   name: string;
@@ -53,7 +42,7 @@ const PRODUCTS: Record<DemoArticle, Product> = {
     detail: { x: 40, y: 12, zoom: 2.6 },
     colors: [{ name: "Bleu délavé", src: "/demo/jean-bleu.webp", swatch: "#7FA3CF" }],
   },
-  veste: {
+  sweat: {
     name: "Sweat à capuche SwiftStyle",
     rayon: "Sweats",
     slug: "sweat-a-capuche-swiftstyle",
@@ -71,57 +60,9 @@ const PRODUCTS: Record<DemoArticle, Product> = {
 };
 const ARTICLES = Object.keys(PRODUCTS) as DemoArticle[];
 
-const FITS: { value: FitPreference; label: string }[] = [
-  { value: "ajustee", label: "Ajustés" },
-  { value: "normale", label: "Normaux" },
-  { value: "ample", label: "Amples" },
-];
-const TITLES: Record<Step, string> = { 1: "Votre photo", 2: "Analyse des mensurations", 3: "Votre taille" };
-
 const zoomOn = (d: Product["detail"]): CSSProperties => ({ transform: `scale(${d.zoom})`, transformOrigin: `${d.x}% ${d.y}%` });
 
 const HESITATION = "Vous hésitez entre deux tailles ? SwiftStyle vous conseille.";
-
-interface SliderProps {
-  id: string;
-  label: string;
-  unit: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange?: (v: number) => void;
-}
-
-function Slider({ id, label, unit, value, min, max, onChange }: SliderProps) {
-  return (
-    <div className="field">
-      <label htmlFor={id}>
-        {label}
-        {!onChange && (
-          <>
-            <svg className="w-lock" viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M5 7V5a3 3 0 0 1 6 0v2M3.75 7h8.5v6.5h-8.5z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-            </svg>
-            <span className="sr">, mesuré sur la photo</span>
-          </>
-        )}
-      </label>
-      <output htmlFor={id}>
-        {value} {unit}
-      </output>
-      <input
-        type="range"
-        id={id}
-        min={min}
-        max={max}
-        step={1}
-        value={value}
-        disabled={!onChange}
-        onChange={(e) => onChange?.(Number(e.target.value))}
-      />
-    </div>
-  );
-}
 
 export function WidgetDemo() {
   const [article, setArticle] = useState<DemoArticle>("tee");
@@ -133,33 +74,15 @@ export function WidgetDemo() {
   const [changes, setChanges] = useState(0);
   const [cart, setCart] = useState(0);
   const [added, setAdded] = useState(false);
-  const [open, setOpen] = useState(false);
 
-  const [m, setM] = useState<Measures>({ h: 172, w: 68, ...estimateBody(172, 68) });
-  const [fit, setFit] = useState<FitPreference>("normale");
-  const [step, setStep] = useState<Step>(1);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [reading, setReading] = useState(false);
-
-  const barRef = useRef<HTMLElement>(null);
-  const readFrame = useRef(0);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const wasOpen = useRef(false);
+  const shopRef = useRef<HTMLDivElement>(null);
+  const closeModal = useRef<(() => void) | null>(null);
   const addedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => {
-    return () => {
-      if (photoUrl) URL.revokeObjectURL(photoUrl);
-    };
-  }, [photoUrl]);
 
   useEffect(
     () => () => {
       clearTimeout(addedTimer.current);
-      cancelAnimationFrame(readFrame.current);
+      closeModal.current?.();
     },
     [],
   );
@@ -167,18 +90,6 @@ export function WidgetDemo() {
   useEffect(() => {
     for (const c of PRODUCTS[article].colors) new Image().src = c.src;
   }, [article]);
-
-  useEffect(() => {
-    if (open) dialogRef.current?.focus();
-    else if (wasOpen.current) triggerRef.current?.focus();
-    wasOpen.current = open;
-  }, [open]);
-
-  useEffect(() => {
-    if (!wasOpen.current) return;
-    if (dialogRef.current) dialogRef.current.scrollTop = 0;
-    titleRef.current?.focus({ preventScroll: true });
-  }, [step]);
 
   const product = PRODUCTS[article];
   const name = product.name;
@@ -203,18 +114,33 @@ export function WidgetDemo() {
     if (n >= 2) setHint(HESITATION);
   };
 
-  const openWidget = () => {
-    setChanges(0);
-    setHint("");
-    setOpen(true);
-  };
-
   const chooseSize = (s: string) => {
     setSize(s);
     setReco(s);
     setAdded(false);
     setHint(`Taille ${s} sélectionnée.`);
-    setOpen(false);
+  };
+
+  const openWidget = async () => {
+    setChanges(0);
+    setHint("");
+    const { openSizeModal } = await import("@/components/size-modal/size-modal");
+    closeModal.current = openSizeModal({
+      garment: {
+        id: DEMO_ARTICLES[article].externalId,
+        shop: "ourlet.example",
+        title: name,
+        category: `Accueil > ${product.rayon}`,
+        url: `https://ourlet.example/produits/${product.slug}`,
+        sizes,
+      },
+      font: shopRef.current ? getComputedStyle(shopRef.current).fontFamily : null,
+      onSelect: (s) => {
+        if (!sizes.includes(s)) return false;
+        chooseSize(s);
+        return true;
+      },
+    });
   };
 
   const addToCart = () => {
@@ -224,51 +150,6 @@ export function WidgetDemo() {
     addedTimer.current = setTimeout(() => setAdded(false), 2200);
   };
 
-  const readBody = () => {
-    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const at = (prev: Measures, e: number) => {
-      const w = shotWeight(prev.h);
-      const to = estimateBody(prev.h, w);
-      const next = { ...prev, w };
-      for (const b of BODY) next[b.key] = Math.round(b.min + (to[b.key] - b.min) * e);
-      return next;
-    };
-    cancelAnimationFrame(readFrame.current);
-    setM((prev) => at(prev, 0));
-    setReading(true);
-    const t0 = performance.now();
-    const tick = (now: number) => {
-      const k = reduce ? 1 : Math.min(1, (now - t0) / 1500);
-      setM((prev) => at(prev, 1 - (1 - k) ** 3));
-      if (k < 1) readFrame.current = requestAnimationFrame(tick);
-      else setReading(false);
-    };
-    readFrame.current = requestAnimationFrame(tick);
-  };
-
-  function runLoading(ms: number, label: string): Promise<void> {
-    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const bar = barRef.current;
-    setBusy(label);
-    if (bar) {
-      bar.style.transitionDuration = "0ms";
-      bar.style.width = "0";
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
-          bar.style.transitionDuration = `${reduce ? 0 : ms}ms`;
-          bar.style.width = "100%";
-        }),
-      );
-    }
-    return new Promise((resolve) =>
-      setTimeout(() => {
-        setBusy(null);
-        resolve();
-      }, reduce ? 200 : ms),
-    );
-  }
-
-  const result = step === 3 ? recommend(article, m, fit) : null;
   const photo = product.colors[color]!.src;
   const colorName = product.colors[color]!.name;
 
@@ -301,8 +182,8 @@ export function WidgetDemo() {
               </span>
             </div>
 
-            <div className="shop">
-              <div className="shop-page" inert={open}>
+            <div className="shop" ref={shopRef}>
+              <div className="shop-page">
                 <p className="shop-promo">Livraison offerte dès 80 € · Retours gratuits sous 30 jours</p>
                 <header className="shop-head">
                   <nav className="shop-nav" aria-label="Rayons de la boutique">
@@ -395,7 +276,6 @@ export function WidgetDemo() {
                     </fieldset>
 
                     <button
-                      ref={triggerRef}
                       className={changes >= 2 ? "ss-trigger is-nudge" : "ss-trigger"}
                       type="button"
                       aria-haspopup="dialog"
@@ -425,157 +305,6 @@ export function WidgetDemo() {
                   </div>
                 </div>
               </div>
-
-              {open && (
-                <>
-                  <div className="ss-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />
-                  <div
-                    ref={dialogRef}
-                    className="widget"
-                    role="dialog"
-                    aria-labelledby="w-title"
-                    tabIndex={-1}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") setOpen(false);
-                    }}
-                  >
-                    <div className="w-top">
-                      <span className="w-brand">SwiftStyle</span>
-                      <button className="w-close" type="button" aria-label="Fermer" onClick={() => setOpen(false)}>
-                        <svg viewBox="0 0 16 16" aria-hidden="true">
-                          <path d="M3 3l10 10M13 3 3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    </div>
-                    <h3 ref={titleRef} className="w-title" id="w-title" tabIndex={-1}>
-                      {TITLES[step]}
-                    </h3>
-                    <div className="w-steps" aria-hidden="true">
-                      {([1, 2, 3] as Step[]).map((n) => (
-                        <i key={n} className={n <= step ? "on" : undefined} />
-                      ))}
-                    </div>
-                    <p className="sr">
-                      Étape {step} sur 3, {name}
-                    </p>
-
-                    {step === 1 && (
-                      <>
-                        <label className="drop">
-                          <input
-                            className="sr"
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) setPhotoUrl(URL.createObjectURL(file));
-                            }}
-                          />
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-                            <circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                          </svg>
-                          <strong>Prendre ou importer une photo</strong>
-                          <small>De face, de la tête aux pieds</small>
-                          {photoUrl && <img src={photoUrl} alt="Aperçu de votre photo" />}
-                        </label>
-                        <Slider id="p-h" label="Taille" unit="cm" value={m.h} min={145} max={205} onChange={(h) => setM((prev) => ({ ...prev, h }))} />
-                        <p className="w-note">
-                          Démo : la photo reste sur votre appareil, rien n&apos;est envoyé. Les mensurations sont simulées.
-                        </p>
-                        <button
-                          className="w-cta"
-                          type="button"
-                          disabled={!photoUrl || busy !== null}
-                          aria-busy={busy !== null}
-                          onClick={() =>
-                            runLoading(1700, "Analyse de la photo…").then(() => {
-                              setStep(2);
-                              readBody();
-                            })
-                          }
-                        >
-                          {busy ?? "Analyser la photo"}
-                        </button>
-                      </>
-                    )}
-
-                    {step === 2 && (
-                      <>
-                        <p className={reading ? "w-lead w-read" : "w-lead w-read is-done"} aria-live="polite">
-                          {reading ? (
-                            <i aria-hidden="true" />
-                          ) : (
-                            <svg viewBox="0 0 16 16" aria-hidden="true">
-                              <path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                          {reading ? "Lecture de vos mensurations sur la photo…" : "Mesurées sur votre photo : vous n'avez rien à régler."}
-                        </p>
-                        {BODY.map((b) => (
-                          <Slider key={b.key} id={b.id} label={b.label} unit="cm" value={m[b.key]} min={b.min} max={b.max} />
-                        ))}
-                        <fieldset className="w-group">
-                          <legend>Je porte mes vêtements</legend>
-                          <div className="w-seg">
-                            {FITS.map((f) => (
-                              <label key={f.value}>
-                                <input className="sr" type="radio" name="demo-fit" value={f.value} checked={fit === f.value} onChange={() => setFit(f.value)} />
-                                <span>{f.label}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </fieldset>
-                        <button
-                          className="w-cta"
-                          type="button"
-                          disabled={busy !== null || reading}
-                          aria-busy={busy !== null}
-                          onClick={() => runLoading(900, "Calcul de votre taille…").then(() => setStep(3))}
-                        >
-                          {busy ?? "Voir ma taille"}
-                        </button>
-                      </>
-                    )}
-
-                    {result && (
-                      <div aria-live="polite">
-                        <div className="w-res">
-                          <div className="w-size">{result.size}</div>
-                          <div>
-                            <p className="t">Taille {result.size} conseillée</p>
-                            <p className="s">{Math.round(result.confidence * 100)} % de correspondance pour cet article</p>
-                          </div>
-                        </div>
-                        <ul className="w-fit">
-                          {result.details.map((d) => (
-                            <li key={d.key}>
-                              <span>{LABEL[d.key]}</span>
-                              <b>{d.feel}</b>
-                              <span className="bar">
-                                <i style={{ left: `${clamp(50 + d.position * 25, 4, 96).toFixed(1)}%` }} />
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="w-other">{result.alternatives.map((a) => `${a.size} : ${a.note}`).join(". ")}.</p>
-                        <button className="w-cta" type="button" onClick={() => chooseSize(result.size)}>
-                          Choisir la taille {result.size}
-                        </button>
-                      </div>
-                    )}
-
-                    <div className={busy ? "w-progress on" : "w-progress"} aria-hidden="true">
-                      <i ref={barRef} />
-                    </div>
-                    {step > 1 && (
-                      <button className="w-back" type="button" disabled={busy !== null || reading} onClick={() => setStep(step === 3 ? 2 : 1)}>
-                        {step === 3 ? "Revoir l'analyse" : "Changer de photo"}
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
             </div>
           </div>
         </div>
