@@ -24,5 +24,5 @@ RUN python scripts/download_model.py
 ENV PORT=8000
 EXPOSE 8000
 
-# Lancement de FastAPI avec Uvicorn
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+# Lancement de FastAPI avec start.py
+CMD ["python", "start.py"]
