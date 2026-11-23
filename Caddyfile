@@ -1,0 +1,12 @@
+# Caddy : HTTPS automatique (Let's Encrypt) pour le domaine de l'API, puis transmission à l'API.
+# Le domaine vient de API_DOMAIN (fichier .env) ; son DNS doit pointer vers le serveur, ports 80 et 443 ouverts.
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	# Deux photos de 10 Mo au plus, plus le formulaire.
+	request_body {
+		max_size 25MB
+	}
+
+	reverse_proxy api:8000
+}

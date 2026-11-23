@@ -1,0 +1,12 @@
+.git/
+.venv/
+__pycache__/
+.pytest_cache/
+models/
+tests/
+.env
+.env.*
+*.md
+compose.yaml
+Caddyfile
+.gitlab-ci.yml

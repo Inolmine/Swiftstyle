@@ -1,0 +1,34 @@
+# Déploiement sur un serveur (VPS) : l'API derrière Caddy, qui obtient et renouvelle tout seul le certificat HTTPS.
+# Réglages dans .env (copier .env.example). Lancer : docker compose up -d --build
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?indiquer les sites autorisés dans ALLOWED_ORIGINS (fichier .env)}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      RATE_LIMIT_MEASURE: ${RATE_LIMIT_MEASURE:-30}
+      RATE_LIMIT_POSE: ${RATE_LIMIT_POSE:-600}
+    # Pas de port publié : seul Caddy joint l'API, sur le réseau interne de Docker.
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2.11.9-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?indiquer le nom de domaine de l'API dans API_DOMAIN (fichier .env)}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
