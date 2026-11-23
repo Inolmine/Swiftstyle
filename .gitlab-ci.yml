@@ -2,65 +2,124 @@ stages:
   - security
   - validation
   - deploy
-
+ 
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+
       when: never
+
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH'
+
     - when: never
-
+ 
 .node:
+
   image: node:22
+
   variables:
+
     NEXT_TELEMETRY_DISABLED: "1"
+
   cache:
+
     key:
+
       files:
+
         - package-lock.json
+
     paths:
+
       - .npm/
+
   before_script:
+
     - npm ci --cache .npm --prefer-offline --no-audit --no-fund
-
+ 
 secret_detection:
+
   stage: security
+
   image:
+
     name: ghcr.io/gitleaks/gitleaks:v8.30.1
+
     entrypoint: [""]
+
   variables:
+
     GIT_DEPTH: "0"
+
   script:
+
     - gitleaks dir --redact .
+
     - gitleaks git --redact .
-  allow_failure: false
 
+  allow_failure: false
+ 
 sast_frontend:
+
   stage: security
+
   image: semgrep/semgrep
+
   script:
+
     - semgrep scan --config auto --error src/ integrations/ next.config.ts open-next.config.ts
-  allow_failure: false
 
+  allow_failure: false
+ 
 validation_projet:
+
   extends: .node
+
   stage: validation
+
+  rules:
+
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+
   script:
+
     - npm run typecheck
+
     - npm test
+
     - npx opennextjs-cloudflare build
+
+  allow_failure: false
+ 
+deploy_api:
+
+  stage: deploy
+
+  tags:
+
+    - swift-vm
+
+  rules:
+
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+
+  environment:
+
+    name: production-api
+
+  script:
+    - APP_DIR=/home/gitlab-runner/swift-api
+    - mkdir -p "$APP_DIR"
+    - rsync -a --delete --exclude '.git' --exclude 'node_modules' --exclude '.next' --exclude '.env' ./ "$APP_DIR/"
+    - cp "$API_ENV_FILE" "$APP_DIR/.env"
+    - chmod 600 "$APP_DIR/.env"
+    - cd "$APP_DIR"
+    - npm ci --no-audit --no-fund
+    - npm run build
+    - pm2 describe swift-api > /dev/null 2>&1 && pm2 reload swift-api --update-env || pm2 start npm --name swift-api -- start
+    - pm2 save
+
   allow_failure: false
 
-deploy_cloudflare:
-  extends: .node
-  stage: deploy
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main" && $CLOUDFLARE_API_TOKEN'
-  environment:
-    name: production
-    url: https://swiftstyle.jesololido2004.workers.dev
-  script:
-    - npx opennextjs-cloudflare build
-    - npx opennextjs-cloudflare deploy
-  allow_failure: false
+ 
